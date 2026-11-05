@@ -275,114 +275,159 @@
             font-weight: 500;
         }
 
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 768px) {
+        /* ===== VERTICAL / CELULAR: maior para leitores no short ===== */
+        @media (max-width: 900px), (orientation: portrait) {
             .top-bar {
-                height: 90px;
-                padding: 0 15px;
-            }
-
-            .logo-topo {
-                height: 50px;
-            }
-
-            .server-url {
-                font-size: 14px;
-            }
-
-            .port-info {
-                font-size: 12px;
-            }
-
-            .port-number {
-                font-size: 16px;
-            }
-
-            .live-badge {
-                font-size: 10px;
-                letter-spacing: 2px;
-            }
-
-            .bottom-bar {
-                height: 65px;
-                padding: 0 15px;
-                gap: 15px;
-            }
-
-            .footer-logo {
-                height: 35px;
-            }
-
-            .footer-links {
-                gap: 12px;
-            }
-
-            .footer-link {
-                font-size: 10px;
-                padding: 4px 8px;
-                gap: 5px;
-            }
-
-            .footer-link svg {
-                width: 14px;
-                height: 14px;
-            }
-
-            .link-main {
-                font-size: 10px;
-            }
-
-            .link-sub {
-                font-size: 8px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .top-bar {
-                height: 80px;
-                flex-wrap: wrap;
+                height: auto;
+                min-height: 150px;
+                flex-direction: column;
                 justify-content: center;
-                gap: 5px;
-                padding: 8px 10px;
+                gap: 14px;
+                padding: 22px 18px 28px;
             }
 
             .logo-topo {
-                height: 35px;
+                height: 78px;
             }
 
             .center-info {
-                gap: 3px;
-            }
-
-            .server-url {
-                font-size: 12px;
-            }
-
-            .port-info {
-                font-size: 11px;
-                gap: 5px;
-            }
-
-            .port-number {
-                font-size: 14px;
-            }
-
-            .bottom-bar {
-                height: 55px;
                 gap: 10px;
             }
 
+            .live-badge {
+                font-size: 16px;
+                letter-spacing: 4px;
+            }
+
+            .live-dot {
+                width: 12px;
+                height: 12px;
+            }
+
+            .server-url {
+                font-size: 28px;
+                letter-spacing: 2.5px;
+            }
+
+            .port-info {
+                font-size: 20px;
+                gap: 10px;
+            }
+
+            .port-number {
+                font-size: 30px;
+            }
+
+            .top-decoration {
+                display: none;
+            }
+
+            .bottom-bar {
+                height: auto;
+                min-height: 140px;
+                flex-direction: column;
+                gap: 16px;
+                padding: 28px 16px 22px;
+            }
+
             .footer-logo {
-                height: 28px;
+                height: 52px;
+            }
+
+            .footer-divider {
+                width: 60%;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
             }
 
             .footer-links {
-                gap: 8px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px 18px;
+                width: 100%;
+                max-width: 420px;
             }
 
             .footer-link {
-                font-size: 9px;
-                padding: 3px 6px;
+                justify-content: center;
+                font-size: 15px;
+                padding: 10px 12px;
+                gap: 10px;
+                background: rgba(0, 212, 255, 0.06);
+            }
+
+            .footer-link svg {
+                width: 26px;
+                height: 26px;
+                flex-shrink: 0;
+            }
+
+            .link-main {
+                font-size: 16px;
+            }
+
+            .link-sub {
+                font-size: 12px;
+            }
+        }
+
+        /* Telas bem estreitas (TikTok / Restream ~360–480) */
+        @media (max-width: 480px) {
+            .top-bar {
+                min-height: 170px;
+                padding: 26px 14px 32px;
+                gap: 16px;
+            }
+
+            .logo-topo {
+                height: 88px;
+            }
+
+            .live-badge {
+                font-size: 18px;
+            }
+
+            .server-url {
+                font-size: 26px;
+            }
+
+            .port-info {
+                font-size: 18px;
+            }
+
+            .port-number {
+                font-size: 28px;
+            }
+
+            .bottom-bar {
+                min-height: 160px;
+                padding: 30px 12px 24px;
+                gap: 18px;
+            }
+
+            .footer-logo {
+                height: 56px;
+            }
+
+            .footer-links {
+                gap: 10px 12px;
+            }
+
+            .footer-link {
+                padding: 12px 10px;
+            }
+
+            .footer-link svg {
+                width: 28px;
+                height: 28px;
+            }
+
+            .link-main {
+                font-size: 15px;
+            }
+
+            .link-sub {
+                font-size: 12px;
             }
         }
     </style>
