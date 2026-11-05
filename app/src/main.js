@@ -1,5 +1,5 @@
 const params = new URLSearchParams(location.search);
-const transparent = params.has("obs") || params.get("fundo") === "transparente";
-if (!transparent) {
+// Fundo transparente por padrão (OBS). Use ?preview=1 só para ver no navegador.
+if (params.has("preview")) {
   document.body.classList.add("preview");
 }

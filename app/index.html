@@ -32,31 +32,12 @@
             font-family: 'Rajdhani', sans-serif;
         }
 
-        /* Página pública: cenário atrás do overlay. No OBS use ?obs=1 (fundo transparente). */
+        /* Opcional: ?preview=1 para ver o overlay com cenário no navegador */
         body.preview {
             background:
                 radial-gradient(ellipse 80% 55% at 50% 78%, rgba(255, 70, 20, 0.55), transparent 60%),
                 radial-gradient(ellipse 50% 40% at 50% 42%, rgba(180, 0, 80, 0.45), transparent 70%),
                 #070b14;
-        }
-
-        .obs-hint {
-            display: none;
-            position: fixed;
-            left: 16px;
-            bottom: 88px;
-            z-index: 20;
-            font-size: 12px;
-            letter-spacing: 0.4px;
-            color: rgba(160, 212, 240, 0.85);
-            background: rgba(5, 10, 20, 0.72);
-            border: 1px solid rgba(0, 212, 255, 0.25);
-            border-radius: 8px;
-            padding: 8px 12px;
-        }
-
-        body.preview .obs-hint {
-            display: block;
         }
 
         /* ===== OVERLAY CONTAINER ===== */
@@ -486,7 +467,6 @@
             </div>
         </div>
     </div>
-    <p class="obs-hint">No OBS, use este link com <strong>?obs=1</strong> para o fundo ficar transparente.</p>
     <script src="src/main.js"></script>
 </body>
 </html>
