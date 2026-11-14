@@ -78,11 +78,15 @@
 
   /* ===== Layout vertical 1080x1920 (TikTok/celular) — escolhido sozinho quando a fonte é mais alta que larga ===== */
   body.vertical #palco { width: 1080px; height: 1920px; }
-  body.vertical .marca { left: 50%; right: auto; top: 70px; width: 400px; transform: translateX(-50%); }
-  body.vertical .cam { transform: scale(1.75); transform-origin: right bottom; right: 70px; bottom: 380px; top: auto; left: auto; }
-  body.vertical.cam-be .cam { left: 100px; right: auto; transform-origin: left bottom; }
-  body.vertical.cam-cd .cam, body.vertical.cam-ce .cam { top: 300px; bottom: auto; transform-origin: right top; }
-  body.vertical.cam-ce .cam { left: 100px; right: auto; transform-origin: left top; }
+  /* Fixo, independe da "Posição da câmera": câmera pequena no topo, jogo no meio, logo embaixo */
+  body.vertical .cam, body.vertical.cam-be .cam, body.vertical.cam-cd .cam, body.vertical.cam-ce .cam {
+    top: 150px; bottom: auto; left: 50%; right: auto;
+    transform: translateX(-50%) scale(1.4); transform-origin: top center;
+  }
+  body.vertical .cam .faixa, body.vertical.cam-be .cam .faixa, body.vertical.cam-ce .cam .faixa { right: 2px; left: auto; }
+  body.vertical .marca, body.vertical.cam-ce .marca {
+    top: auto; bottom: 130px; left: 50%; right: auto; width: 400px; transform: translateX(-50%);
+  }
 
   /* ===== Prévia e painel (somem no modo OBS) ===== */
   .previa, .painel { display: none; }
@@ -299,7 +303,7 @@
   @keyframes pulsar { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { .viewers .ponto { animation: none; } }
   .cam-ce .viewers { left: auto; right: var(--margem); }
-  body.vertical .viewers { left: 50%; right: auto; top: 165px; transform: translateX(-50%); }
+  body.vertical .viewers, body.vertical.cam-ce .viewers { top: auto; bottom: 232px; left: 50%; right: auto; transform: translateX(-50%); }
   .chat .chat-viewers { font-size: 13px; font-weight: 700; color: #E7ECF1; font-variant-numeric: tabular-nums; cursor: default; }
   .cam { transition: opacity .5s ease, visibility .5s; }
 
