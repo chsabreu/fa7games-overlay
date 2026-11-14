@@ -119,6 +119,16 @@
 
   /* ===== Painel de controle (barra lateral; some no OBS) ===== */
   .aba, .chat { display: none; }
+  /* ===== Música ===== */
+  .painel .generos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .painel .generos button {
+    font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 6px 11px; border-radius: 999px;
+    background: #161A20; color: #E7ECF1; border: 1px solid rgba(255,255,255,.14);
+  }
+  .painel .generos button:hover { border-color: rgba(255,255,255,.3); filter: none; }
+  .painel .generos button[aria-checked="true"] { background: rgba(0,221,246,.14); border-color: var(--ciano); color: var(--ciano); }
+  .painel .player:empty { display: none; }
+  .painel .player iframe { display: block; width: 100%; border: 0; border-radius: 12px; }
   /* ===== Chat na lateral esquerda (só no site) ===== */
   body.chat-on:not(.obs) .chat {
     display: block; position: fixed; z-index: 25; top: 0; left: 0; bottom: 0; width: var(--chat-l, 360px);
@@ -335,6 +345,19 @@
       <div class="ajuste"><label for="luz-forca">Intensidade</label><output for="luz-forca" data-fmt="%"></output>
         <input id="luz-forca" type="range" min="0.4" max="1" step="0.05"></div>
       <button id="btn-luz" class="cheio" type="button">Acender painel de luz</button>
+    </section>
+
+    <section class="secao" aria-labelledby="t-musica">
+      <h2 id="t-musica">Música</h2>
+      <p class="nota">Playlists da StreamBeats: livres para lives na Twitch, Kick e YouTube, sem precisar dar crédito. Toca aqui no site e entra na live pelo áudio do desktop do OBS.</p>
+      <div class="generos" id="generos" role="radiogroup" aria-label="Gênero"></div>
+      <div class="campo" id="campo-minha" hidden>
+        <label for="minha-playlist">Link de playlist do Spotify</label>
+        <input id="minha-playlist" type="text" autocomplete="off" spellcheck="false" placeholder="https://open.spotify.com/playlist/...">
+        <p class="nota">Por sua conta: só use músicas que você tem certeza que podem tocar em live.</p>
+      </div>
+      <div class="player" id="player"></div>
+      <p class="nota">Para tocar as faixas inteiras (e não só 30 s), entre na sua conta do Spotify neste navegador.</p>
     </section>
 
     <section class="secao" aria-labelledby="t-chat">
@@ -934,6 +957,57 @@
   btnLuz.setAttribute('aria-pressed', 'false');
   btnLuz.addEventListener('click', function () { luz(!document.body.classList.contains('luz')); });
   corLuz(); mostrarValores();
+
+  // ===== Música: playlists da StreamBeats (livres para live) no player do Spotify; só no site =====
+  var GENEROS = [
+    ['lofi', 'Lo-fi', 'playlist/4kAqBBEZQsBIXMIJl6u8tO'],
+    ['hiphop', 'Hip-hop', 'playlist/4X52HPxkyj1MQRV4UulYns'],
+    ['edm', 'Eletrônica', 'playlist/76DR3PNoHa9OupODuzdMfN'],
+    ['synthwave', 'Synthwave', 'playlist/2gjWL0J5SQKceERGJ8Lb5e'],
+    ['chiptune', 'Chiptune', 'playlist/4oteQd86dwxqXg60z8wfQ6'],
+    ['ambient', 'Ambiente', 'playlist/2XKQYeY9DAg0dl0LKux1Bk'],
+    ['hifi', 'Hi-Fi', 'playlist/2A9L25I2elZJ8puLTJSb9H'],
+    ['indiepop', 'Indie pop', 'playlist/5bLqnWX3PesKB1BQ01Erzu'],
+    ['rock', 'Rock', 'playlist/3DBZowKNagHlV5ME32tPvF'],
+    ['minha', 'Minha playlist', null]
+  ];
+  var generosBox = document.getElementById('generos'), player = document.getElementById('player');
+  var campoMinha = document.getElementById('campo-minha'), minhaPlaylist = document.getElementById('minha-playlist');
+  var genero = ler('genero') || '';
+  minhaPlaylist.value = ler('minha-playlist') || '';
+  function spotifyCaminho(u) {
+    var m = /open\.spotify\.com\/(?:intl-[a-z-]+\/)?(playlist|album)\/([A-Za-z0-9]{10,40})/.exec(u || '');
+    return m ? m[1] + '/' + m[2] : null;
+  }
+  function tocarGenero(id) {
+    genero = id; gravar('genero', id);
+    generosBox.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', b.dataset.id === id ? 'true' : 'false'); });
+    campoMinha.hidden = id !== 'minha';
+    var g = GENEROS.filter(function (x) { return x[0] === id; })[0];
+    var caminho = g && (g[2] || spotifyCaminho(minhaPlaylist.value));
+    if (!caminho) { player.textContent = ''; return; }
+    var src = 'https://open.spotify.com/embed/' + caminho + '?theme=0';
+    var f = player.querySelector('iframe');
+    if (f && f.src === src) return;
+    player.textContent = '';
+    f = document.createElement('iframe');
+    f.src = src; f.height = 152; f.loading = 'lazy'; f.title = 'Player de música (' + g[1] + ')';
+    f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    player.appendChild(f);
+  }
+  if (!document.body.classList.contains('obs')) {          // no OBS não carrega player nenhum
+    GENEROS.forEach(function (g) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.id = g[0]; b.textContent = g[1];
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
+      b.addEventListener('click', function () { tocarGenero(g[0]); });
+      generosBox.appendChild(b);
+    });
+    minhaPlaylist.addEventListener('change', function () {
+      gravar('minha-playlist', minhaPlaylist.value.trim()); if (genero === 'minha') tocarGenero('minha');
+    });
+    if (genero) tocarGenero(genero);
+  }
 
   // ===== Chat do Casterlabs na lateral: só no navegador, nunca vai para o OBS =====
   var chatLink = document.getElementById('chat-link'), chatLarg = document.getElementById('chat-largura');
