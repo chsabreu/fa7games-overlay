@@ -329,13 +329,28 @@
 
   /* ===== Tocando agora (só no vertical): embaixo do jogo, acima da logo ===== */
   .musica-live {
-    position: absolute; left: 50%; bottom: 300px; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 352px; transform: translateX(-50%);
     display: none; align-items: center; gap: 16px; width: 640px; padding: 12px 18px 12px 12px; border-radius: 10px;
     background: linear-gradient(180deg, rgba(42,47,55,.94) 0, rgba(21,24,28,.94) 100%); border-bottom: 2px solid var(--ciano);
     box-shadow: 0 6px 16px rgba(0,0,0,.5), inset 0 -8px 12px -8px rgba(0,221,246,.5);
     font-family: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif; color: #fff;
   }
-  body.vertical.ver-musica.tem-musica .musica-live { display: flex; }
+  body.vertical.ver-musica .musica-live { display: flex; }
+  .musica-live .ml-icone { display: none; width: 76px; height: 76px; flex: none; border-radius: 6px; align-items: center; justify-content: center;
+    font-size: 40px; color: var(--ciano); background: radial-gradient(circle, rgba(0,221,246,.22), #15181C 70%); }
+  .musica-live.sem-capa .ml-icone { display: flex; }
+  .musica-live.sem-capa img { display: none; }
+  body:not(.tem-musica) .musica-live .eq i { animation: none; transform: scaleY(.3); }
+
+  /* ===== Redes sociais (só no vertical): embaixo do player ===== */
+  .redes { position: absolute; left: 50%; bottom: 290px; transform: translateX(-50%); display: none; gap: 12px;
+    font-family: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif; }
+  body.vertical.ver-redes .redes { display: flex; }
+  .redes .rede { display: flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 6px; white-space: nowrap;
+    font-size: 18px; font-weight: 600; color: #fff; background: rgba(21,24,28,.92); border-bottom: 2px solid var(--cor);
+    box-shadow: 0 4px 10px rgba(0,0,0,.45); }
+  .redes .rede i { width: 10px; height: 10px; border-radius: 2px; background: var(--cor); box-shadow: 0 0 8px var(--cor); }
+  .redes .tw { --cor: #9146FF; } .redes .kk { --cor: #53FC18; } .redes .yt { --cor: #FF0033; }
   .musica-live img { width: 76px; height: 76px; border-radius: 6px; object-fit: cover; flex: none; background: #15181C; }
   .musica-live .ml-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .musica-live small { font-size: 14px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ciano); }
@@ -583,7 +598,11 @@
       <button id="btn-musica-live" class="alternar" type="button" aria-pressed="true">
         <span class="alternar-texto">Música na live (vertical)</span><span class="alternar-estado">ligado</span>
       </button>
-      <p class="nota">Mostra capa, nome e artista da música embaixo do jogo no overlay vertical. Some quando a música pausa.</p>
+      <p class="nota">Player visual embaixo do jogo no overlay vertical. Mostra a música do Spotify quando tem; sem música, mostra "Playlist da live".</p>
+      <button id="btn-redes" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Redes sociais (vertical)</span><span class="alternar-estado">ligado</span>
+      </button>
+      <p class="nota">twitch.tv/fa7hertv · kick.com/fa7hertv · youtube.com/@fa7hertv embaixo do player.</p>
       <button class="leve" id="sp-sair" type="button" hidden>Desconectar Spotify</button>
     </section>
 
@@ -685,10 +704,16 @@
       <div class="ap-img" id="ap-img"></div>
       <div class="ap-texto"><small id="ap-quem"></small><strong id="ap-oque"></strong></div>
     </div>
-    <div class="musica-live" id="musica-live" aria-hidden="true">
+    <div class="musica-live sem-capa" id="musica-live" aria-hidden="true">
+      <span class="ml-icone">&#x266B;</span>
       <img id="ml-capa" alt="">
       <div class="ml-texto"><small>&#x266B; tocando agora</small><strong id="ml-nome"></strong><span id="ml-artista"></span></div>
       <span class="eq"><i></i><i></i><i></i><i></i></span>
+    </div>
+    <div class="redes" aria-hidden="true">
+      <span class="rede tw"><i></i>twitch.tv/fa7hertv</span>
+      <span class="rede kk"><i></i>kick.com/fa7hertv</span>
+      <span class="rede yt"><i></i>youtube.com/@fa7hertv</span>
     </div>
     <div class="top-doadores" id="top-doadores" aria-hidden="true">
       <h3>Top presentes</h3>
@@ -1035,7 +1060,7 @@
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
       : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, escuro: escuro, frase: frase,
           viewers: viewersTotal, viewersPlats: viewersLista, verViewers: verViewers,
-          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica };
+          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
   function enviarDiag() {
@@ -1060,6 +1085,7 @@
     if (typeof e.verTop === 'boolean') aplicarVerTop(e.verTop);
     if (noObs && Array.isArray(e.top)) mostrarTop(e.top);
     if (typeof e.verMusica === 'boolean') aplicarVerMusica(e.verMusica);
+    if (typeof e.verRedes === 'boolean') aplicarVerRedes(e.verRedes);
     if (noObs && 'musica' in e) mostrarMusicaLive(e.musica);
     if (e.pedido === 'video') { if (!noObs) oferecer(e.de).catch(function (err) { console.warn('WebRTC', err); }); return; }
     if (e.pedido === 'estado') { if (!noObs) enviar(); return; }
@@ -1257,12 +1283,14 @@
     btnMusicaLive.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
   }
   function mostrarMusicaLive(m) {
-    var tem = !!(m && m.tocando && m.nome);
-    document.body.classList.toggle('tem-musica', tem);
-    if (!tem) return;
-    mlNome.textContent = String(m.nome); mlArtista.textContent = String(m.artista || '');
-    if (typeof m.capa === 'string' && /^https:\/\//.test(m.capa)) { if (mlCapa.src !== m.capa) mlCapa.src = m.capa; mlCapa.hidden = false; }
-    else mlCapa.hidden = true;
+    // o player aparece sempre no vertical; sem música, mostra um texto padrão
+    var tem = !!(m && m.nome), card = document.getElementById('musica-live');
+    document.body.classList.toggle('tem-musica', !!(tem && m.tocando));     // equalizador anima só tocando
+    mlNome.textContent = tem ? String(m.nome) : 'Playlist da live';
+    mlArtista.textContent = tem ? String(m.artista || '') : 'fa7herTV';
+    var capaOk = tem && typeof m.capa === 'string' && /^https:\/\//.test(m.capa);
+    if (capaOk && mlCapa.src !== m.capa) mlCapa.src = m.capa;
+    card.classList.toggle('sem-capa', !capaOk);
   }
   // chamado pelo player do site a cada mudança de estado; só manda para o OBS quando muda algo que aparece
   function atualizarMusica(m) {
@@ -1271,6 +1299,16 @@
     musicaAtual = m; mostrarMusicaLive(m);
     if (antes !== agora) enviarDepois();
   }
+  var verRedes = true, btnRedes = document.getElementById('btn-redes');
+  function aplicarVerRedes(on) {
+    verRedes = !!on; gravar('ver-redes', on ? '1' : '0');
+    document.body.classList.toggle('ver-redes', verRedes);
+    btnRedes.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnRedes.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+  }
+  btnRedes.addEventListener('click', function () { aplicarVerRedes(!verRedes); avisar(true); enviar(); });
+  aplicarVerRedes(ler('ver-redes') !== '0');
+  mostrarMusicaLive(null);
   btnMusicaLive.addEventListener('click', function () { aplicarVerMusica(!verMusica); avisar(true); enviar(); });
   aplicarVerMusica(ler('ver-musica') !== '0');
 
