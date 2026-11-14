@@ -323,7 +323,8 @@
   .tocador .progresso input { flex: 1; }
   .tocador .direita { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
   .tocador .direita .vol { font-size: 14px; opacity: .7; }
-  .tocador .direita input { width: 96px; }
+  .tocador .direita input { width: 120px; }
+  .tocador .vol-num { width: 2.2em; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: rgba(231,236,241,.6); }
   .tocador .biblio {
     padding: 8px 14px; border-radius: 999px; font-weight: 600; white-space: nowrap;
     color: var(--ciano); border: 1px solid rgba(0,221,246,.45);
@@ -367,7 +368,8 @@
   body.sp-on:not(.obs) .tocador { container-type: inline-size; }
   @container (max-width: 760px) {
     .tocador .barra { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; padding: 0 10px; }
-    .tocador .progresso, .tocador .direita .vol, .tocador .direita input { display: none; }
+    .tocador .progresso, .tocador .direita .vol { display: none; }
+    .tocador .direita input { width: 80px; }
   }
   @container (max-width: 460px) {
     .tocador .atual img { width: 40px; height: 40px; }
@@ -545,7 +547,8 @@
       </div>
       <div class="direita">
         <span class="vol" aria-hidden="true">&#x1F50A;</span>
-        <input id="sp-volume" type="range" min="0" max="1" step="0.05" aria-label="Volume">
+        <input id="sp-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
+        <output class="vol-num" id="sp-vol-num" for="sp-volume"></output>
         <button class="biblio" id="btn-biblioteca" type="button" aria-expanded="false" aria-controls="biblioteca">&#x266B; Biblioteca</button>
       </div>
     </div>
@@ -1131,7 +1134,17 @@
   var spPosicao = 0, spDuracao = 0, spPausado = true, spMarca = 0, spArrastando = false;
   var bibAba = 'generos', bibAberta = null, minhasCache = null;
   spClient.value = ler('sp-client') || '';
-  spVolume.value = ler('sp-volume') || 0.5;
+  // Volume 0–100 com curva cúbica: a maior parte da barra fica nos volumes baixos (mais precisão ali).
+  // 10 ≈ 0,1% · 20 ≈ 0,8% · 30 ≈ 2,7% · 50 ≈ 12,5% · 100 = 100%
+  var volSalvo = ler('sp-vol');
+  if (volSalvo === null || volSalvo === '') {               // converte o volume antigo (0 a 1, linear)
+    var antigo = parseFloat(ler('sp-volume'));
+    volSalvo = isNaN(antigo) ? 40 : Math.round(Math.cbrt(antigo) * 100);
+  }
+  spVolume.value = volSalvo;
+  function volGanho() { var v = parseInt(spVolume.value, 10) / 100; return v * v * v; }
+  function mostrarVol() { $('sp-vol-num').textContent = spVolume.value; spVolume.setAttribute('aria-valuetext', spVolume.value + ' de 100'); }
+  mostrarVol();
 
   function spStatus(t, tipo) { spStatusEl.textContent = t || ''; spStatusEl.style.color = tipo === 'erro' ? '#ff8a8a' : tipo === 'on' ? 'var(--ciano)' : ''; }
   function temEscopo(s) { return !!spToken && (' ' + (spToken.escopo || '') + ' ').indexOf(' ' + s + ' ') >= 0; }
@@ -1203,7 +1216,7 @@
     spArtista.textContent = 'Ligando o player...';
     window.onSpotifyWebPlaybackSDKReady = function () {
       spPlayer = new Spotify.Player({
-        name: 'fa7herTV overlay', volume: parseFloat(spVolume.value) || 0.5,
+        name: 'fa7herTV overlay', volume: volGanho(),
         getOAuthToken: function (cb) {
           spAcesso().then(cb).catch(function () { spDesconectar('Sessão do Spotify expirou. Conecte de novo.'); });
         }
@@ -1375,7 +1388,15 @@
     spPlay.addEventListener('click', function () { if (spPlayer) { spPlayer.activateElement(); spPlayer.togglePlay(); } });
     $('sp-ant').addEventListener('click', function () { if (spPlayer) spPlayer.previousTrack(); });
     $('sp-prox').addEventListener('click', function () { if (spPlayer) spPlayer.nextTrack(); });
-    spVolume.addEventListener('input', function () { gravar('sp-volume', spVolume.value); if (spPlayer) spPlayer.setVolume(parseFloat(spVolume.value)); });
+    spVolume.addEventListener('input', function () {
+      gravar('sp-vol', spVolume.value); mostrarVol(); if (spPlayer) spPlayer.setVolume(volGanho());
+    });
+    // roda do mouse em cima da barra: sobe/desce de 1 em 1
+    spVolume.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      spVolume.value = Math.max(0, Math.min(100, parseInt(spVolume.value, 10) + (e.deltaY < 0 ? 1 : -1)));
+      spVolume.dispatchEvent(new Event('input'));
+    }, { passive: false });
     spPos.addEventListener('input', function () { spArrastando = true; spTempo.textContent = mmss(spPos.value / 1000 * spDuracao); });
     spPos.addEventListener('change', function () {
       spArrastando = false;
