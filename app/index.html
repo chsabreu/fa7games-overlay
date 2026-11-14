@@ -111,82 +111,191 @@
     background: #000; display: none;
   }
   .cam.ao-vivo #tela { display: block; }
-  .painel input[type=range] { width: 110px; padding: 0; accent-color: var(--ciano); }
-  .painel .fx-status { color: rgba(255,255,255,.5); font-size: 13px; }
-  .painel button.leve { background: transparent; color: var(--ciano); border: 1px solid rgba(0,221,246,.5); }
   body:not(.obs) .cam.ao-vivo .previa { display: none; }
   .cam .previa { text-align: center; padding: 0 12px; font-size: 16px; }
 
+  /* ===== Painel de controle (barra lateral; some no OBS) ===== */
+  .aba, #luz, #btn-apagar { display: none; }
   body:not(.obs) .painel { display: flex; }
   .painel {
-    position: fixed; z-index: 10; left: 50%; transform: translateX(-50%);
-    top: calc(14px + env(safe-area-inset-top, 0px));
-    max-width: calc(100% - 24px);
-    gap: 10px 14px; align-items: center; flex-wrap: wrap; justify-content: center;
-    padding: 10px 14px;
-    background: linear-gradient(180deg, #1F2328, #0E1013); border: 1px solid rgba(0,221,246,.45); border-radius: 6px;
-    box-shadow: 0 0 18px rgba(0,221,246,.12);
-    font: 15px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff;
+    position: fixed; z-index: 30; top: 0; right: 0; bottom: 0;
+    width: min(340px, 100vw); flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+    background: #0D1014; border-left: 1px solid rgba(0,221,246,.22);
+    box-shadow: -12px 0 32px rgba(0,0,0,.45);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7ECF1;
+    transition: transform .25s ease, visibility .25s;
   }
-  .painel label { color: rgba(255,255,255,.72); }
-  .painel input, .painel select {
-    font: inherit; color: #fff; background: #181B20;
-    border: 1px solid rgba(255,255,255,.22); border-radius: 4px; padding: 7px 10px;
+  body.painel-fechado .painel { transform: translateX(100%); visibility: hidden; }
+  .painel .topo {
+    position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px;
+    padding: 16px 18px; background: #0D1014; border-bottom: 1px solid rgba(255,255,255,.07);
   }
-  .painel input { width: 220px; max-width: 60vw; }
+  .painel .titulo { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .painel .titulo strong {
+    font: italic 700 19px/1 "Bahnschrift", "Arial Narrow", sans-serif; letter-spacing: .04em; color: var(--ciano);
+    text-shadow: 0 0 12px rgba(0,221,246,.35);
+  }
+  .painel .titulo span { font-size: 12px; color: rgba(231,236,241,.55); margin-top: 4px; }
+  .painel .salvo { color: var(--ciano); font-size: 12px; }
+  .painel .secao {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+  .painel h2 { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(231,236,241,.5); }
+  .painel .campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .painel .dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .painel label { font-size: 13px; color: rgba(231,236,241,.78); }
+  .painel input[type=text], .painel input[type=password], .painel select {
+    width: 100%; min-width: 0; font: inherit; color: #fff; background: #161A20;
+    border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 8px 10px;
+  }
+  .painel input[type=text]:hover, .painel input[type=password]:hover, .painel select:hover { border-color: rgba(255,255,255,.24); }
   .painel input:focus-visible, .painel select:focus-visible { outline: 2px solid var(--ciano); outline-offset: 1px; }
-  .painel .salvo { color: var(--ciano); min-width: 3.4em; }
-  .painel .quebra { flex-basis: 100%; height: 0; }
-  .painel .par { display: inline-flex; align-items: center; gap: 10px; }
-  .painel input.curto { width: 170px; }
+  .painel .ajuste { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; }
+  .painel .ajuste input[type=range] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--ciano); }
+  .painel .ajuste output { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ciano); }
+  .painel .nota { font-size: 12px; color: rgba(231,236,241,.5); }
+  .painel .nota:empty { display: none; }
+  .painel .linha-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .painel .com-botao { display: flex; gap: 8px; }
+  .painel .com-botao input { flex: 1; }
   .painel button {
     font: inherit; font-weight: 600; color: #001014; background: var(--ciano);
-    border: 0; border-radius: 4px; padding: 7px 14px; cursor: pointer;
+    border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; white-space: nowrap;
   }
-  .painel button:focus-visible { outline: 2px solid var(--branco); outline-offset: 2px; }
-  .painel .obs-status { display: inline-flex; align-items: center; gap: 7px; color: rgba(255,255,255,.72); }
-  .painel .obs-status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #6b7078; }
+  .painel button:hover { filter: brightness(1.08); }
+  .painel button:focus-visible, .aba:focus-visible, #btn-apagar:focus-visible { outline: 2px solid var(--branco); outline-offset: 2px; }
+  .painel button.leve { background: transparent; color: var(--ciano); border: 1px solid rgba(0,221,246,.4); }
+  .painel button.cheio { width: 100%; padding: 11px 14px; background: linear-gradient(180deg, #fff, #dfe6ec); color: #0D1014; }
+  .painel button.icone {
+    width: 32px; height: 32px; padding: 0; background: transparent; color: rgba(231,236,241,.7);
+    border: 1px solid rgba(255,255,255,.12); font-size: 16px;
+  }
+  .painel .obs-status { display: inline-flex; align-items: center; gap: 8px; color: rgba(231,236,241,.8); }
+  .painel .obs-status::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: #6b7078; }
   .painel .obs-status.on::before { background: var(--ciano); box-shadow: 0 0 8px var(--ciano); }
   .painel .obs-status.erro::before { background: #ff5a5a; }
+
+  .painel button.alternar {
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+    padding: 11px 14px; background: #161A20; color: #E7ECF1; border: 1px solid rgba(255,255,255,.12);
+  }
+  .painel button.alternar .alternar-estado { font-size: 12px; font-weight: 600; color: rgba(231,236,241,.5); text-transform: uppercase; letter-spacing: .08em; }
+  .painel button.alternar[aria-pressed="true"] { background: rgba(255,90,90,.14); border-color: #ff5a5a; }
+  .painel button.alternar[aria-pressed="true"] .alternar-estado { color: #ff8a8a; }
+
+  /* ===== Modo fumando: câmera, moldura e faixa somem da live ===== */
+  .cam { transition: opacity .5s ease, visibility .5s; }
+  body.fumando .cam { opacity: 0; visibility: hidden; }
+  body.fumando:not(.obs) .cam { opacity: .18; visibility: visible; }
+
+  body:not(.obs).painel-fechado .aba {
+    display: block; position: fixed; z-index: 30; top: 16px; right: 0;
+    font: 600 14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ciano);
+    background: #0D1014; border: 1px solid rgba(0,221,246,.35); border-right: 0;
+    border-radius: 6px 0 0 6px; padding: 9px 14px; cursor: pointer;
+  }
+
+  /* ===== Painel de luz: a tela do site vira uma luz; no OBS nada muda ===== */
+  body.luz:not(.obs) #luz { display: block; position: fixed; inset: 0; z-index: 40; background: var(--luz-cor, #fff); }
+  body.luz:not(.obs) #btn-apagar {
+    display: block; position: fixed; z-index: 41; left: 50%; bottom: 24px; transform: translateX(-50%);
+    font: 600 14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #333;
+    background: rgba(255,255,255,.7); border: 1px solid rgba(0,0,0,.15); border-radius: 999px;
+    padding: 10px 18px; cursor: pointer; opacity: .35; transition: opacity .2s;
+  }
+  body.luz #btn-apagar:hover, body.luz #btn-apagar:focus-visible { opacity: 1; }
 </style>
 </head>
 <body>
-  <div class="painel">
-    <label for="campo-jogo">Nome do jogo</label>
-    <input id="campo-jogo" type="text" maxlength="40" autocomplete="off" placeholder="vazio esconde a faixa">
-    <label for="campo-webcam">Webcam</label>
-    <select id="campo-webcam">
-      <option value="padrao">Padrão do sistema</option>
-      <option value="nenhuma">Desligada</option>
-    </select>
-    <label for="campo-cam">Posição</label>
-    <select id="campo-cam">
-      <option value="bd">Embaixo, direita</option>
-      <option value="be">Embaixo, esquerda</option>
-      <option value="cd">Em cima, direita</option>
-      <option value="ce">Em cima, esquerda</option>
-    </select>
-    <label for="campo-previa">Prévia</label>
-    <select id="campo-previa">
-      <option value="horizontal">Horizontal</option>
-      <option value="vertical">Vertical</option>
-    </select>
-    <span class="salvo" id="salvo" role="status"></span>
-    <span class="quebra"></span>
-    <span class="par"><label for="campo-senha">Senha do WebSocket</label>
-    <input id="campo-senha" class="curto" type="password" autocomplete="off" placeholder="vazio se não tiver"></span>
-    <button id="btn-obs" type="button">Conectar ao OBS</button>
-    <span class="obs-status" id="obs-status" role="status">OBS desconectado</span>
-    <span class="quebra"></span>
-    <span class="par"><label for="fx-zoom">Zoom no rosto</label><input id="fx-zoom" type="range" min="1" max="3" step="0.05"></span>
-    <span class="par"><label for="fx-desfoque">Desfoque do fundo</label><input id="fx-desfoque" type="range" min="0" max="24" step="1"></span>
-    <span class="par"><label for="fx-luz">Brilho</label><input id="fx-luz" type="range" min="0.8" max="1.6" step="0.02"></span>
-    <span class="par"><label for="fx-cor">Cor</label><input id="fx-cor" type="range" min="0.8" max="2" step="0.05"></span>
-    <span class="par"><label for="fx-calor">Tom quente</label><input id="fx-calor" type="range" min="0" max="0.4" step="0.01"></span>
-    <button id="fx-padrao" class="leve" type="button">Padrão</button>
-    <span class="fx-status" id="fx-status" role="status"></span>
-    <span class="fx-status" id="obs-cam" role="status"></span>
-  </div>
+  <aside class="painel" id="painel" aria-label="Controles do overlay">
+    <header class="topo">
+      <div class="titulo"><strong>fa7herTV</strong><span>Controle do overlay</span></div>
+      <span class="salvo" id="salvo" role="status"></span>
+      <button class="icone" id="btn-fechar" type="button" aria-label="Recolher painel" title="Recolher painel">&#x203A;</button>
+    </header>
+
+    <section class="secao" aria-labelledby="t-live">
+      <h2 id="t-live">Live</h2>
+      <div class="campo">
+        <label for="campo-jogo">Nome do jogo</label>
+        <input id="campo-jogo" type="text" maxlength="40" autocomplete="off" placeholder="vazio esconde a faixa">
+      </div>
+      <div class="dupla">
+        <div class="campo">
+          <label for="campo-cam">Posição da câmera</label>
+          <select id="campo-cam">
+            <option value="bd">Embaixo, direita</option>
+            <option value="be">Embaixo, esquerda</option>
+            <option value="cd">Em cima, direita</option>
+            <option value="ce">Em cima, esquerda</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="campo-previa">Prévia</label>
+          <select id="campo-previa">
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
+          </select>
+        </div>
+      </div>
+      <button id="btn-fumando" class="alternar" type="button" aria-pressed="false">
+        <span class="alternar-texto">Modo fumando</span><span class="alternar-estado">desligado</span>
+      </button>
+      <p class="nota">Esconde a câmera e a moldura na live enquanto estiver ligado.</p>
+    </section>
+
+    <section class="secao" aria-labelledby="t-webcam">
+      <h2 id="t-webcam">Webcam</h2>
+      <div class="campo">
+        <label for="campo-webcam">Câmera</label>
+        <select id="campo-webcam">
+          <option value="padrao">Padrão do sistema</option>
+          <option value="nenhuma">Desligada</option>
+        </select>
+      </div>
+      <div class="ajuste"><label for="fx-zoom">Zoom no rosto</label><output for="fx-zoom" data-fmt="x"></output>
+        <input id="fx-zoom" type="range" min="1" max="3" step="0.05"></div>
+      <div class="ajuste"><label for="fx-desfoque">Desfoque do fundo</label><output for="fx-desfoque" data-fmt="px"></output>
+        <input id="fx-desfoque" type="range" min="0" max="24" step="1"></div>
+      <div class="ajuste"><label for="fx-luz">Brilho</label><output for="fx-luz" data-fmt="%"></output>
+        <input id="fx-luz" type="range" min="0.8" max="1.6" step="0.02"></div>
+      <div class="ajuste"><label for="fx-cor">Cor</label><output for="fx-cor" data-fmt="%"></output>
+        <input id="fx-cor" type="range" min="0.8" max="2" step="0.05"></div>
+      <div class="ajuste"><label for="fx-calor">Tom quente</label><output for="fx-calor" data-fmt="%"></output>
+        <input id="fx-calor" type="range" min="0" max="0.4" step="0.01"></div>
+      <div class="linha-acoes">
+        <span class="nota" id="fx-status" role="status"></span>
+        <button id="fx-padrao" class="leve" type="button">Restaurar padrão</button>
+      </div>
+    </section>
+
+    <section class="secao" aria-labelledby="t-luz">
+      <h2 id="t-luz">Painel de luz</h2>
+      <p class="nota">A tela do site vira uma luz branca para iluminar seu rosto. Não aparece no OBS.</p>
+      <div class="ajuste"><label for="luz-tom">Tom</label><output for="luz-tom" data-fmt="tom"></output>
+        <input id="luz-tom" type="range" min="0" max="1" step="0.05"></div>
+      <div class="ajuste"><label for="luz-forca">Intensidade</label><output for="luz-forca" data-fmt="%"></output>
+        <input id="luz-forca" type="range" min="0.4" max="1" step="0.05"></div>
+      <button id="btn-luz" class="cheio" type="button">Acender painel de luz</button>
+    </section>
+
+    <section class="secao" aria-labelledby="t-obs">
+      <h2 id="t-obs">Conexão com o OBS</h2>
+      <span class="obs-status" id="obs-status" role="status">OBS desconectado</span>
+      <div class="campo">
+        <label for="campo-senha">Senha do WebSocket</label>
+        <div class="com-botao">
+          <input id="campo-senha" type="password" autocomplete="off" placeholder="vazio se não tiver">
+          <button id="btn-obs" type="button">Conectar</button>
+        </div>
+      </div>
+      <p class="nota" id="obs-cam" role="status"></p>
+    </section>
+  </aside>
+  <button class="aba" id="btn-abrir" type="button" aria-label="Abrir painel">&#x2039; Painel</button>
+  <div id="luz" aria-hidden="true"></div>
+  <button id="btn-apagar" type="button">Apagar luz (Esc)</button>
 
   <div id="palco">
     <div class="previa jogo"></div>
@@ -298,7 +407,16 @@
       fx[k] = parseFloat(c.value); gravar('fx', JSON.stringify(fx)); enviarDepois();
     });
   });
-  function mostrarFx() { for (var k in camposFx) camposFx[k].value = fx[k]; }
+  function mostrarFx() { for (var k in camposFx) camposFx[k].value = fx[k]; mostrarValores(); }
+  // Mostra o valor de cada controle deslizante ao lado do nome
+  function mostrarValores() {
+    document.querySelectorAll('.painel .ajuste').forEach(function (a) {
+      var i = a.querySelector('input'), o = a.querySelector('output'), v = parseFloat(i.value), f = o.dataset.fmt;
+      o.textContent = f === 'x' ? v.toFixed(2).replace(/0$/, '') + '×' : f === 'px' ? v + ' px'
+        : f === 'tom' ? (v < 0.4 ? 'frio' : v > 0.6 ? 'quente' : 'neutro') : Math.round(v * 100) + '%';
+    });
+  }
+  document.addEventListener('input', function (e) { if (e.target.type === 'range') mostrarValores(); });
   mostrarFx();
   document.getElementById('fx-padrao').addEventListener('click', function () {
     fx = Object.assign({}, FX_PADRAO); mostrarFx(); avisar(gravar('fx', JSON.stringify(fx))); enviar();
@@ -523,7 +641,7 @@
     if (!ws || !ws.pronto) return;
     var dados = extra && extra.pedido
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
-      : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx };
+      : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, fumando: fumando };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
   function enviarDiag() {
@@ -549,6 +667,7 @@
       faixa.textContent = e.jogo; campoJogo.value = e.jogo; gravar('jogo', e.jogo);
     }
     if (e.cam) { campoCam.value = e.cam; aplicarCam(e.cam); gravar('cam', e.cam); }
+    if (typeof e.fumando === 'boolean') aplicarFumando(e.fumando);
     if (e.fx && typeof e.fx === 'object') {
       for (var k in FX_PADRAO) if (typeof e.fx[k] === 'number') fx[k] = e.fx[k];
       gravar('fx', JSON.stringify(fx)); mostrarFx();
@@ -667,6 +786,62 @@
   listarCameras(); ligarCamera();
   conectar();
 
+  // ===== Modo fumando: esconde câmera e moldura na live (vai para o OBS) =====
+  var btnFumando = document.getElementById('btn-fumando');
+  var fumando = false;
+  function aplicarFumando(on) {
+    fumando = !!on; gravar('fumando', fumando ? '1' : '0');
+    document.body.classList.toggle('fumando', fumando);
+    btnFumando.setAttribute('aria-pressed', fumando ? 'true' : 'false');
+    btnFumando.querySelector('.alternar-estado').textContent = fumando ? 'ligado' : 'desligado';
+  }
+  aplicarFumando(q.has('fumando') ? q.get('fumando') === '1' : ler('fumando') === '1');
+  btnFumando.addEventListener('click', function () { aplicarFumando(!fumando); avisar(true); enviar(); });
+
+  // ===== Painel de luz: só no navegador =====
+  var luzTom = document.getElementById('luz-tom'), luzForca = document.getElementById('luz-forca');
+  var btnLuz = document.getElementById('btn-luz');
+  luzTom.value = ler('luz-tom') || 0.6; luzForca.value = ler('luz-forca') || 1;
+  function corLuz() {
+    var t = parseFloat(luzTom.value), k = parseFloat(luzForca.value);
+    var frio = [226, 240, 255], neutro = [255, 255, 255], quente = [255, 212, 160];
+    var a = t < 0.5 ? frio : neutro, b = t < 0.5 ? neutro : quente, p = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+    var c = a.map(function (x, i) { return Math.round((x + (b[i] - x) * p) * k); });
+    document.body.style.setProperty('--luz-cor', 'rgb(' + c.join(',') + ')');
+  }
+  [luzTom, luzForca].forEach(function (c) {
+    c.addEventListener('input', function () { gravar(c.id, c.value); corLuz(); });
+  });
+  function acenderLuz() {
+    corLuz(); document.body.classList.add('luz');
+    var el = document.documentElement;
+    if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(function () {});
+    document.getElementById('btn-apagar').focus();
+  }
+  function apagarLuz() {
+    document.body.classList.remove('luz');
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+    btnLuz.focus();
+  }
+  btnLuz.addEventListener('click', acenderLuz);
+  document.getElementById('btn-apagar').addEventListener('click', apagarLuz);
+  addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.body.classList.contains('luz')) apagarLuz();
+  });
+  corLuz(); mostrarValores();
+
+  // ===== Abrir / recolher o painel =====
+  function painelAberto(on) {
+    document.body.classList.toggle('painel-fechado', !on); gravar('painel', on ? 'aberto' : 'fechado'); ajustar();
+  }
+  document.getElementById('btn-fechar').addEventListener('click', function () {
+    painelAberto(false); document.getElementById('btn-abrir').focus();
+  });
+  document.getElementById('btn-abrir').addEventListener('click', function () {
+    painelAberto(true); document.getElementById('btn-fechar').focus();
+  });
+  if (ler('painel') === 'fechado') document.body.classList.add('painel-fechado');
+
   // Horizontal (1920x1080) ou vertical (1080x1920): no OBS decide pelo formato da fonte;
   // no navegador dá para ver a prévia vertical pelo painel. ?layout=vertical força.
   var palco = document.getElementById('palco');
@@ -679,7 +854,12 @@
       : innerHeight > innerWidth || (!document.body.classList.contains('obs') && campoPrevia.value === 'vertical');
     document.body.classList.toggle('vertical', vertical);
     var pw = vertical ? 1080 : 1920, ph = vertical ? 1920 : 1080;
-    var s = Math.min(innerWidth / pw, innerHeight / ph);
+    // No navegador, a prévia usa o espaço que sobra ao lado do painel
+    var b = document.body.classList;
+    var lateral = !b.contains('obs') && !b.contains('painel-fechado') && innerWidth > 760 ? 340 : 0;
+    var larg = innerWidth - lateral;
+    var s = Math.min(larg / pw, innerHeight / ph);
+    palco.style.left = (larg / 2) + 'px';
     palco.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
   }
   addEventListener('resize', ajustar); ajustar();
