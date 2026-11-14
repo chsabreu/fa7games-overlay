@@ -415,13 +415,13 @@
                 radial-gradient(ellipse 60% 40% at 50% 100%, rgba(0,140,255,.18), transparent 70%),
                 linear-gradient(180deg, #03070b 0, #061019 55%, #02060a 100%); }
   /* chão de grade em perspectiva andando para frente */
-  .ini-chao { position: absolute; left: -40%; right: -40%; top: 62%; bottom: -5%; perspective: 520px; overflow: hidden;
-    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 35%); mask-image: linear-gradient(180deg, transparent 0, #000 35%); }
+  .ini-chao { position: absolute; left: -40%; right: -40%; top: 71%; bottom: -5%; perspective: 520px; overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 20%); mask-image: linear-gradient(180deg, transparent 0, #000 20%); }
   .ini-grade { position: absolute; left: 0; right: 0; top: 0; height: 300%; transform-origin: 50% 0; transform: rotateX(72deg);
     background-image: linear-gradient(rgba(0,221,246,.55) 2px, transparent 2px), linear-gradient(90deg, rgba(0,221,246,.55) 2px, transparent 2px);
     background-size: 90px 90px; animation: ini-grade 1.6s linear infinite; }
   @keyframes ini-grade { from { transform: rotateX(72deg) translateY(-90px); } to { transform: rotateX(72deg) translateY(0); } }
-  .ini-horizonte { position: absolute; left: 0; right: 0; top: 62%; height: 3px; background: var(--ciano);
+  .ini-horizonte { position: absolute; left: 0; right: 0; top: 71%; height: 3px; background: var(--ciano);
     box-shadow: 0 0 18px 4px rgba(0,221,246,.8), 0 0 80px 20px rgba(0,221,246,.35); }
   .ini-scan { position: absolute; inset: 0; pointer-events: none; opacity: .35;
     background: repeating-linear-gradient(180deg, rgba(0,0,0,.55) 0 2px, transparent 2px 5px); }
@@ -476,7 +476,7 @@
     background: rgba(21,24,28,.92); border-bottom: 2px solid var(--cor); box-shadow: 0 4px 10px rgba(0,0,0,.5); }
   .ini-redes span::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--cor); box-shadow: 0 0 8px var(--cor); }
   /* vertical 1080x1920 */
-  body.vertical .ini-chao, body.vertical .ini-horizonte { top: 68%; }
+  body.vertical .ini-chao, body.vertical .ini-horizonte { top: 74%; }
   body.vertical .ini-centro { top: 260px; }
   body.vertical .ini-logo { width: 900px; max-width: 86%; }
   body.vertical .ini-titulo { font-size: 66px; letter-spacing: .08em; width: 800px; line-height: 1.15; }
