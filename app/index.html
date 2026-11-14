@@ -724,7 +724,7 @@
 
     <div class="cam">
       <video id="video" autoplay muted playsinline></video>
-      <canvas id="tela" width="960" height="540"></canvas>
+      <canvas id="tela" width="640" height="360"></canvas>
       <div class="previa" id="cam-msg">sua câmera</div>
       <div class="descanso" aria-live="polite"><small>câmera off</small><span id="descanso-frase"></span></div>
       <svg class="moldura" viewBox="0 0 288 162" aria-hidden="true">
@@ -881,6 +881,7 @@
   function quadro() {
     requestAnimationFrame(quadro);
     if (!stream || video.readyState < 2 || !video.videoWidth) return;
+    if (escuro) return;                              // câmera escurecida: a imagem está coberta, não processa
     if (video.currentTime === ultimoTempo) return;   // só desenha quando chega quadro novo
     ultimoTempo = video.currentTime;
     var vw = video.videoWidth, vh = video.videoHeight;
@@ -922,8 +923,8 @@
 
     if (temMascara && fx.desfoque > 0) {
       // fundo: desfocado e um pouco mais escuro
-      var borda = fx.desfoque * 2;
-      ctx.filter = cor + ' brightness(.82) blur(' + fx.desfoque + 'px)';
+      var bl = fx.desfoque * W / 960, borda = bl * 2;      // mesmo desfoque visual em qualquer tamanho de canvas
+      ctx.filter = cor + ' brightness(.82) blur(' + bl + 'px)';
       ctx.drawImage(video, sx, sy, sw, sh, -borda, -borda, W + 2 * borda, H + 2 * borda);
       // pessoa: nítida, por cima
       var kx = mascara.width / vw, ky = mascara.height / vh;
@@ -1088,6 +1089,10 @@
     if (typeof e.verRedes === 'boolean') aplicarVerRedes(e.verRedes);
     if (noObs && 'musica' in e) mostrarMusicaLive(e.musica);
     if (e.pedido === 'video') { if (!noObs) oferecer(e.de).catch(function (err) { console.warn('WebRTC', err); }); return; }
+    if (e.pedido === 'parar-video') {           // a fonte saiu do ar: para de codificar vídeo para ela
+      if (!noObs && pcs[e.de]) { try { pcs[e.de].close(); } catch (x) {} delete pcs[e.de]; }
+      return;
+    }
     if (e.pedido === 'estado') { if (!noObs) enviar(); return; }
     if (typeof e.jogo === 'string' && document.activeElement !== faixa) {
       faixa.textContent = e.jogo; campoJogo.value = e.jogo; gravar('jogo', e.jogo);
@@ -1141,6 +1146,14 @@
       if ((pc.connectionState === 'failed' || pc.connectionState === 'closed') && pcs[id] === pc) delete pcs[id];
     };
     pc.addTrack(trilha, stream);
+    // Prefere H.264: o Chrome usa o codificador de vídeo da placa (quase sem CPU). Se o OBS não aceitar, cai no VP8.
+    try {
+      var tr = pc.getTransceivers()[0], caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
+      if (tr && tr.setCodecPreferences && caps) {
+        var h264 = caps.codecs.filter(function (c) { return /h264/i.test(c.mimeType); });
+        if (h264.length) tr.setCodecPreferences(h264.concat(caps.codecs.filter(function (c) { return !/h264/i.test(c.mimeType); })));
+      }
+    } catch (e) {}
     await pc.setLocalDescription(await pc.createOffer());
     enviarRtc(id, { sdp: pc.localDescription.toJSON() });
   }
@@ -1148,7 +1161,11 @@
     try {
       var s = pc.getSenders()[0], p = s.getParameters();
       if (!p.encodings || !p.encodings.length) p.encodings = [{}];
-      p.encodings[0].maxBitrate = 6000000; p.degradationPreference = 'maintain-resolution';
+      // A moldura na live é pequena: 640x360 a 30 qps sobra. Bem menos trabalho para codificar e decodificar.
+      var alt = (s.track && s.track.getSettings && s.track.getSettings().height) || 720;
+      p.encodings[0].scaleResolutionDownBy = Math.max(1, alt / 360);
+      p.encodings[0].maxBitrate = 1500000; p.encodings[0].maxFramerate = 30;
+      p.degradationPreference = 'maintain-framerate';
       await s.setParameters(p);
     } catch (e) {}
   }
@@ -1163,9 +1180,27 @@
   }
 
   // OBS: pede o vídeo ao site até chegar
+  // Só a fonte que está no ar recebe a câmera e roda os efeitos. O OBS avisa quando a fonte
+  // aparece/some (troca de cena); fora do ar, a fonte larga o vídeo e o site para de mandar para ela.
+  var fonteVisivel = true, fonteNoAr = true;
+  function fonteAtiva() { return fonteVisivel || fonteNoAr; }
+  function mudouFonte() {
+    if (fonteAtiva()) { if (!recebendo) { aviso('esperando a webcam do site...'); pedirVideo(); } }
+    else pararVideo();
+  }
+  function pararVideo() {
+    clearTimeout(tPedido);
+    if (pcRecebe) { try { pcRecebe.close(); } catch (e) {} pcRecebe = null; enviar({ pedido: 'parar-video' }); }
+    recebendo = false; stream = null; video.srcObject = null; camBox.classList.remove('ao-vivo');
+    aviso('fora do ar: câmera pausada');
+  }
+  if (noObs) {
+    addEventListener('obsSourceVisibleChanged', function (ev) { fonteVisivel = !!(ev.detail && ev.detail.visible); mudouFonte(); });
+    addEventListener('obsSourceActiveChanged', function (ev) { fonteNoAr = !!(ev.detail && ev.detail.active); mudouFonte(); });
+  }
   function pedirVideo() {
     clearTimeout(tPedido);
-    if (!noObs || recebendo) return;
+    if (!noObs || recebendo || !fonteAtiva()) return;
     enviar({ pedido: 'video' });
     tPedido = setTimeout(pedirVideo, 6000);
   }
