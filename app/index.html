@@ -854,8 +854,22 @@
       return x.protocol === 'https:' || (x.protocol === 'http:' && /^(localhost|127\.0\.0\.1)$/.test(x.hostname));
     } catch (e) { return false; }
   }
+  // O link do Casterlabs abre um "loader" que só procura o Caffeinated no seu PC e redireciona.
+  // Dentro do site essa procura falha, então já apontamos direto para o widget servido pelo Caffeinated.
+  function linkDireto(u) {
+    try {
+      var x = new URL(u);
+      if (x.hostname !== 'widgets.casterlabs.co' || x.pathname.indexOf('/caffeinated/loader') !== 0) return u;
+      var busca = x.search.replace('%D9%A8%D9%A0%D9%A9%D9%A2', '8092');
+      var p = x.searchParams, porta = p.get('port') || '8092';
+      var ends = (p.get('addresses') || '127.0.0.1').split(',');
+      var end = ends.indexOf('127.0.0.1') >= 0 ? '127.0.0.1' : ends[0];
+      return 'http://' + end + ':' + porta + '/api/plugin/widget/loader/widget.html' + busca +
+        '&validAddress=' + encodeURIComponent(end) + '&customCSS=';
+    } catch (e) { return u; }
+  }
   function mostrarChat(on) {
-    var u = chatLink.value.trim();
+    var u = linkDireto(chatLink.value.trim());
     if (on && !linkValido(u)) { chatAviso.textContent = 'Cole um link https:// (ou http://localhost) primeiro.'; on = false; }
     else chatAviso.textContent = '';
     document.body.classList.toggle('chat-on', on);
