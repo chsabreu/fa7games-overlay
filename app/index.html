@@ -33,7 +33,7 @@
   /* --- Marca fa7her no canto --- */
   .marca {
     position: absolute; top: 28px; left: var(--margem);
-    width: 340px; height: auto; display: block;
+    width: 240px; height: auto; display: block;
     filter: drop-shadow(0 0 1px rgba(255,255,255,.35)) drop-shadow(0 0 14px rgba(0,221,246,.28)) drop-shadow(0 5px 10px rgba(0,0,0,.55));
   }
 
@@ -44,8 +44,8 @@
   }
   .cam .moldura { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .cam .f7 {
-    position: absolute; left: -50px; top: -52px;
-    width: 98px; height: auto; display: block;
+    position: absolute; left: -36px; top: -38px;
+    width: 70px; height: auto; display: block;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,.6));
   }
   .cam .faixa {
@@ -75,7 +75,7 @@
 
   /* ===== Layout vertical 1080x1920 (TikTok/celular) — escolhido sozinho quando a fonte é mais alta que larga ===== */
   body.vertical #palco { width: 1080px; height: 1920px; }
-  body.vertical .marca { left: 50%; right: auto; top: 70px; width: 560px; transform: translateX(-50%); }
+  body.vertical .marca { left: 50%; right: auto; top: 70px; width: 400px; transform: translateX(-50%); }
   body.vertical .cam { transform: scale(1.75); transform-origin: right bottom; right: 70px; bottom: 380px; top: auto; left: auto; }
   body.vertical.cam-be .cam { left: 100px; right: auto; transform-origin: left bottom; }
   body.vertical.cam-cd .cam, body.vertical.cam-ce .cam { top: 300px; bottom: auto; transform-origin: right top; }
@@ -424,6 +424,11 @@
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
     video.srcObject = null; camBox.classList.remove('ao-vivo');
     if (webcam === 'nenhuma') { aviso('webcam desligada'); return; }
+    // No OBS a webcam não é aberta aqui: ela vem do site aberto no navegador
+    if (document.body.classList.contains('obs')) {
+      if (pcRecebe) { try { pcRecebe.close(); } catch (e) {} pcRecebe = null; }
+      recebendo = false; aviso('esperando a webcam do site...'); pedirVideo(); return;
+    }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { aviso('este navegador não libera a webcam'); return; }
     aviso('ligando webcam...');
     try {
@@ -433,7 +438,7 @@
       var s = await navigator.mediaDevices.getUserMedia({ video: pede, audio: false });
       if (meu !== nLigar) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
       stream = s; video.srcObject = s; camBox.classList.add('ao-vivo');
-      video.play().catch(function () {}); iniciarIA(); aviso('webcam ok');
+      video.play().catch(function () {}); iniciarIA(); aviso('webcam ok'); transmitirTrack();
       // Na 1ª vez os nomes das câmeras só aparecem depois da permissão
       if (webcam !== 'padrao' && !achou && s.getVideoTracks()[0].label !== webcam &&
           (await cameras()).some(function (d) { return d.label === webcam; })) return ligarCamera();
@@ -496,7 +501,7 @@
       } else if (msg.op === 2) {        // Conectado
         w.pronto = true; status('OBS conectado', 'on');
         // O overlay da live pede o estado atual; o site responde com o dele
-        if (noObs) { enviar({ pedido: 'estado' }); enviarDiag(); } else enviar();
+        if (noObs) { enviar({ pedido: 'estado' }); enviarDiag(); if (!recebendo) pedirVideo(); } else enviar();
       } else if (msg.op === 7) {        // Resposta
         var p = pedidos[d.requestId]; if (!p) return; delete pedidos[d.requestId];
         d.requestStatus.result ? p.ok(d.responseData || {}) : p.falha(new Error(d.requestStatus.comment || 'erro ' + d.requestStatus.code));
@@ -536,6 +541,8 @@
       }
       return;
     }
+    if (e.rtc) { if (e.para === eu) receberRtc(e).catch(function (err) { console.warn('WebRTC', err); }); return; }
+    if (e.pedido === 'video') { if (!noObs) oferecer(e.de).catch(function (err) { console.warn('WebRTC', err); }); return; }
     if (e.pedido === 'estado') { if (!noObs) enviar(); return; }
     if (typeof e.jogo === 'string' && document.activeElement !== faixa) {
       faixa.textContent = e.jogo; campoJogo.value = e.jogo; gravar('jogo', e.jogo);
@@ -546,6 +553,106 @@
       gravar('fx', JSON.stringify(fx)); mostrarFx();
     }
     if (e.webcam && e.webcam !== webcam) { webcam = e.webcam; gravar('webcam', webcam); listarCameras(); ligarCamera(); }
+  }
+
+  // ===== Webcam do site → overlay do OBS =====
+  // O site (que tem a câmera) manda o vídeo por WebRTC para cada overlay aberto no OBS.
+  // A conversa para montar a conexão passa pelo próprio OBS WebSocket. Tudo fica no seu PC.
+  var pcs = {};                                   // no site: uma conexão por overlay do OBS
+  var pcRecebe = null, recebendo = false, tPedido = null, tQueda = null;
+
+  function enviarRtc(para, rtc) {
+    if (!ws || !ws.pronto) return;
+    pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, para: para, rtc: rtc } }).catch(function () {});
+  }
+  function novaConexao(outro) {
+    var pc = new RTCPeerConnection({ iceServers: [] });
+    pc.fila = [];
+    pc.onicecandidate = function (ev) { if (ev.candidate) enviarRtc(outro, { ice: ev.candidate.toJSON() }); };
+    return pc;
+  }
+  async function aplicarIce(pc, c) {
+    if (!pc.remoteDescription) { pc.fila.push(c); return; }
+    try { await pc.addIceCandidate(c); } catch (e) {}
+  }
+  async function descarregarFila(pc) {
+    var f = pc.fila; pc.fila = [];
+    for (var i = 0; i < f.length; i++) { try { await pc.addIceCandidate(f[i]); } catch (e) {} }
+  }
+
+  // Site: manda a webcam para o overlay que pediu
+  async function oferecer(id) {
+    if (pcs[id]) { try { pcs[id].close(); } catch (e) {} }
+    var trilha = stream && stream.getVideoTracks()[0];
+    if (!trilha) { pcs[id] = null; return; }      // manda assim que a webcam ligar
+    var pc = pcs[id] = novaConexao(id);
+    pc.onconnectionstatechange = function () {
+      if ((pc.connectionState === 'failed' || pc.connectionState === 'closed') && pcs[id] === pc) delete pcs[id];
+    };
+    pc.addTrack(trilha, stream);
+    await pc.setLocalDescription(await pc.createOffer());
+    enviarRtc(id, { sdp: pc.localDescription.toJSON() });
+  }
+  async function qualidade(pc) {
+    try {
+      var s = pc.getSenders()[0], p = s.getParameters();
+      if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = 6000000; p.degradationPreference = 'maintain-resolution';
+      await s.setParameters(p);
+    } catch (e) {}
+  }
+  function transmitirTrack() {
+    if (noObs) return;
+    var trilha = stream && stream.getVideoTracks()[0];
+    if (!trilha) return;
+    Object.keys(pcs).forEach(function (id) {
+      var s = pcs[id] && pcs[id].getSenders()[0];
+      if (s) s.replaceTrack(trilha).catch(function () {}); else oferecer(id).catch(function () {});
+    });
+  }
+
+  // OBS: pede o vídeo ao site até chegar
+  function pedirVideo() {
+    clearTimeout(tPedido);
+    if (!noObs || recebendo) return;
+    enviar({ pedido: 'video' });
+    tPedido = setTimeout(pedirVideo, 6000);
+  }
+  function perdeuVideo() {
+    recebendo = false; stream = null; camBox.classList.remove('ao-vivo');
+    aviso('webcam do site caiu, tentando de novo...'); pedirVideo();
+  }
+  async function receberRtc(e) {
+    var r = e.rtc, pc;
+    if (!noObs) {                                 // site recebendo a resposta do OBS
+      pc = pcs[e.de]; if (!pc) return;
+      if (r.sdp && r.sdp.type === 'answer') { await pc.setRemoteDescription(r.sdp); descarregarFila(pc); qualidade(pc); }
+      else if (r.ice) aplicarIce(pc, r.ice);
+      return;
+    }
+    if (r.sdp && r.sdp.type === 'offer') {        // OBS recebendo a oferta do site
+      if (recebendo && pcRecebe && pcRecebe.connectionState === 'connected') return;
+      if (pcRecebe) { try { pcRecebe.close(); } catch (x) {} }
+      pc = pcRecebe = novaConexao(e.de); pc.de = e.de;
+      pc.ontrack = function (ev) {
+        var s = ev.streams[0] || new MediaStream([ev.track]);
+        stream = s; video.srcObject = s; video.play().catch(function () {});
+        camBox.classList.add('ao-vivo'); recebendo = true; clearTimeout(tPedido);
+        iniciarIA(); aviso('webcam ok (vinda do site)');
+      };
+      pc.onconnectionstatechange = function () {
+        if (pcRecebe !== pc) return;
+        clearTimeout(tQueda);
+        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') perdeuVideo();
+        else if (pc.connectionState === 'disconnected')
+          tQueda = setTimeout(function () { if (pcRecebe === pc && pc.connectionState !== 'connected') perdeuVideo(); }, 4000);
+      };
+      await pc.setRemoteDescription(r.sdp); descarregarFila(pc);
+      await pc.setLocalDescription(await pc.createAnswer());
+      enviarRtc(e.de, { sdp: pc.localDescription.toJSON() });
+    } else if (r.ice && pcRecebe && pcRecebe.de === e.de) {
+      aplicarIce(pcRecebe, r.ice);
+    }
   }
 
   var tEnvio;
