@@ -1,15 +1,22 @@
 # fa7herTV overlay
 
-Overlay para OBS (Browser Source) da live do fa7herTV. Página estática em 1920x1080 com marca, moldura da câmera e faixa de nome.
+Overlay para OBS (Browser Source) da live do fa7herTV. Página estática em 1920x1080 com marca, webcam dentro da moldura e faixa com o nome do jogo.
 
-## Uso no OBS
+## Como funciona
 
-1. Adicione uma fonte **Navegador** (Browser Source).
-2. Aponte para a URL publicada (Vercel) ou para o arquivo local `app/index.html`.
-3. Defina 1920x1080.
+- **No navegador** (o site): aparece um painel para trocar o nome do jogo, a webcam e a posição.
+- **No OBS** (fonte Navegador): o painel some e fica só o overlay, com fundo transparente.
+- As mudanças feitas no site chegam na hora ao overlay da live pelo **OBS WebSocket**. Os dois se conectam sozinhos e tentam de novo a cada 5 s. Quando o overlay do OBS abre, ele pede ao site o estado atual.
 
-A sincronização da webcam usa o OBS WebSocket local (`ws://127.0.0.1:4455`). A senha é digitada no painel e fica salva só no navegador (localStorage), nunca no código.
+## Configuração no OBS (uma vez)
+
+1. **Ferramentas → Configurações do servidor WebSocket → Ativar servidor WebSocket** (porta 4455). Copie a senha em "Mostrar informações de conexão".
+2. Adicione uma fonte **Navegador** com a URL `https://fa7games-overlay.vercel.app/?senha=SUA_SENHA`, 1920x1080.
+3. Para a webcam aparecer dentro do overlay no OBS, abra o OBS com o parâmetro `--enable-media-stream` (botão direito no atalho do OBS → Propriedades → Destino, acrescente no final). Sem isso, o OBS não libera câmera para fontes Navegador. Se a webcam também estiver numa fonte "Dispositivo de captura de vídeo", pode ser que só um dos dois consiga usá-la; nesse caso, remova ou oculte essa fonte.
+4. No site, digite a mesma senha no painel. O status deve mostrar **OBS conectado**.
+
+A senha fica salva só no navegador (localStorage) e na URL da fonte do OBS, nunca no código.
 
 ## Deploy
 
-Projeto estático, sem build. Na Vercel, importe o repositório e faça deploy; o conteúdo de `app/` é publicado (ver `vercel.json`).
+Projeto estático, sem build. A Vercel publica o conteúdo de `app/` (ver `vercel.json`).
