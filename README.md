@@ -6,6 +6,7 @@ Overlay para OBS (Browser Source) da live do fa7herTV. Página estática em 1920
 
 - **No navegador** (o site): aparece um painel para trocar o nome do jogo, a webcam e a posição.
 - **No OBS** (fonte Navegador): o painel some e fica só o overlay, com fundo transparente.
+- A webcam passa por efeitos no próprio navegador: zoom que segue o rosto, desfoque do fundo (IA do MediaPipe) e correção de cor (brilho, cor, tom quente). Ajuste pelos controles do painel.
 - As mudanças feitas no site chegam na hora ao overlay da live pelo **OBS WebSocket**. Os dois se conectam sozinhos e tentam de novo a cada 5 s. Quando o overlay do OBS abre, ele pede ao site o estado atual.
 
 ## Configuração no OBS (uma vez)
