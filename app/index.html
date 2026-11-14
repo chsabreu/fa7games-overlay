@@ -121,7 +121,35 @@
     display: block; position: fixed; z-index: 25; top: 0; left: 0; bottom: 0; width: var(--chat-l, 360px);
     background: #0D1014; border-right: 1px solid rgba(0,221,246,.22); box-shadow: 12px 0 32px rgba(0,0,0,.35);
   }
-  .chat iframe { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+  body.chat-on:not(.obs) .chat { display: flex; flex-direction: column; }
+  .chat iframe { flex: 1; width: 100%; border: 0; display: none; background: transparent; }
+  .chat.modo-frame iframe { display: block; }
+  .chat.modo-frame .chat-lista { display: none; }
+  .chat .chat-topo {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.07);
+    font: 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7ECF1;
+  }
+  .chat .chat-topo strong { font: italic 700 17px/1 "Bahnschrift", "Arial Narrow", sans-serif; letter-spacing: .04em; color: var(--ciano); }
+  .chat .chat-status { font-size: 12px; color: rgba(231,236,241,.5); }
+  .chat .chat-status.on { color: var(--ciano); }
+  .chat .chat-status.erro { color: #ff8a8a; }
+  .chat-lista {
+    flex: 1; overflow-y: auto; overscroll-behavior: contain; list-style: none; margin: 0; padding: 8px 0;
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7ECF1;
+  }
+  .chat-lista li { padding: 7px 16px; overflow-wrap: anywhere; }
+  .chat-lista li:hover { background: rgba(255,255,255,.03); }
+  .chat-lista .meta { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 12px; color: rgba(231,236,241,.45); }
+  .chat-lista .plat { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 3px; color: #fff; }
+  .chat-lista .plat.TWITCH { background: #9146FF; } .chat-lista .plat.KICK { background: #53FC18; color: #0b0b0b; }
+  .chat-lista .plat.YOUTUBE { background: #FF0033; } .chat-lista .plat.TIKTOK { background: #25F4EE; color: #0b0b0b; }
+  .chat-lista .selo { width: 16px; height: 16px; }
+  .chat-lista .nome { font-weight: 700; font-size: 14px; }
+  .chat-lista .hora { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .chat-lista .emote { height: 24px; vertical-align: middle; }
+  .chat-lista li.sistema { color: rgba(231,236,241,.45); font-size: 13px; font-style: italic; }
+  .chat-lista li.doacao { border-left: 3px solid var(--ciano); background: rgba(0,221,246,.06); }
   body:not(.obs) .painel { display: flex; }
   .painel {
     position: fixed; z-index: 30; top: 0; right: 0; bottom: 0;
@@ -312,7 +340,9 @@
   </aside>
   <button class="aba" id="btn-abrir" type="button" aria-label="Abrir painel">&#x2039; Painel</button>
   <aside class="chat" id="chat" aria-label="Chat da live">
-    <!-- o widget do Casterlabs conversa com o Caffeinated no seu PC; o Chrome exige liberar isso para frames -->
+    <div class="chat-topo"><strong>Chat</strong><span class="chat-status" id="chat-status" role="status"></span></div>
+    <ol class="chat-lista" id="chat-lista" aria-live="polite"></ol>
+    <!-- só para links que não são do Casterlabs -->
     <iframe id="chat-frame" title="Chat da live" referrerpolicy="no-referrer"
       allow="local-network-access; local-network; loopback-network; autoplay"></iframe>
   </aside>
@@ -854,35 +884,124 @@
       return x.protocol === 'https:' || (x.protocol === 'http:' && /^(localhost|127\.0\.0\.1)$/.test(x.hostname));
     } catch (e) { return false; }
   }
-  // O link do Casterlabs abre um "loader" que só procura o Caffeinated no seu PC e redireciona.
-  // Dentro do site essa procura falha, então já apontamos direto para o widget servido pelo Caffeinated.
-  function linkDireto(u) {
+  // ===== Chat nativo: o site conversa direto com o Caffeinated no seu PC =====
+  // (o widget do Casterlabs dentro de um frame não consegue se conectar; aqui usamos a mesma
+  //  conexão que ele usaria, com a permissão que o site já tem para falar com o OBS)
+  var chatBox = document.getElementById('chat'), chatLista = document.getElementById('chat-lista');
+  var chatStatus = document.getElementById('chat-status');
+  var chatWs = null, chatReligar = null, chatVistos = {};
+
+  function casterlabs(u) {
     try {
-      var x = new URL(u);
-      if (x.hostname !== 'widgets.casterlabs.co' || x.pathname.indexOf('/caffeinated/loader') !== 0) return u;
-      var busca = x.search.replace('%D9%A8%D9%A0%D9%A9%D9%A2', '8092');
-      var p = x.searchParams, porta = p.get('port') || '8092';
-      var ends = (p.get('addresses') || '127.0.0.1').split(',');
-      var end = ends.indexOf('127.0.0.1') >= 0 ? '127.0.0.1' : ends[0];
-      return 'http://' + end + ':' + porta + '/api/plugin/widget/loader/widget.html' + busca +
-        '&validAddress=' + encodeURIComponent(end) + '&customCSS=';
-    } catch (e) { return u; }
+      var p = new URL(u).searchParams;
+      if (!p.get('pluginId') || !p.get('widgetId') || !p.get('authorization')) return null;
+      var porta = (p.get('port') || '8092').replace(/\D/g, '') || '8092';
+      return 'ws://127.0.0.1:' + porta + '/api/plugin/' + encodeURIComponent(p.get('pluginId')) + '/widget/' +
+        encodeURIComponent(p.get('widgetId')) + '/realtime?authorization=' + encodeURIComponent(p.get('authorization')) + '&mode=WIDGET';
+    } catch (e) { return null; }
   }
+  function estadoChat(txt, tipo) { chatStatus.textContent = txt; chatStatus.className = 'chat-status' + (tipo ? ' ' + tipo : ''); }
+  function corLegivel(c) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(c || ''); if (!m) return '#9fd8ff';
+    var n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    var l = 0.299 * r + 0.587 * g + 0.114 * b;
+    if (l >= 110) return '#' + m[1];
+    var k = 110 / Math.max(l, 1);               // clareia cores escuras para ler no fundo escuro
+    return 'rgb(' + [r, g, b].map(function (v) { return Math.min(255, Math.round(v * k + 40)); }).join(',') + ')';
+  }
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function urlSegura(u) { return typeof u === 'string' && /^https:\/\//.test(u) ? u : null; }
+  function addLinha(li) {
+    var noFim = chatLista.scrollHeight - chatLista.scrollTop - chatLista.clientHeight < 60;
+    chatLista.appendChild(li);
+    while (chatLista.children.length > 200) chatLista.removeChild(chatLista.firstChild);
+    if (noFim) chatLista.scrollTop = chatLista.scrollHeight;
+  }
+  function mensagem(ev) {
+    var id = ev.meta_id || ev.id;
+    if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
+    if (ev.is_visible === false) return;
+    var li = el('li', ev.donations && ev.donations.length ? 'doacao' : '');
+    if (id) li.dataset.id = id;
+    var s = ev.sender || {}, meta = el('div', 'meta');
+    if (s.platform) meta.appendChild(el('span', 'plat ' + s.platform, ({ TWITCH: 'TW', KICK: 'KICK', YOUTUBE: 'YT', TIKTOK: 'TT' })[s.platform] || s.platform));
+    (s.badges || []).slice(0, 3).forEach(function (b) {
+      if (!urlSegura(b)) return; var i = el('img', 'selo'); i.src = b; i.alt = ''; i.loading = 'lazy'; meta.appendChild(i);
+    });
+    var nome = el('span', 'nome', s.displayname || s.username || '?'); nome.style.color = corLegivel(s.color); meta.appendChild(nome);
+    var t = ev.timestamp ? new Date(ev.timestamp) : new Date();
+    meta.appendChild(el('span', 'hora', ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2)));
+    li.appendChild(meta);
+    var txt = el('div', 'texto');
+    (ev.fragments && ev.fragments.length ? ev.fragments : [{ type: 'TEXT', text: ev.raw || '' }]).forEach(function (f) {
+      var img = f.emote && urlSegura(f.emote.image_link);
+      if (f.type === 'EMOTE' && img) { var i = el('img', 'emote'); i.src = img; i.alt = f.raw || f.text || ''; i.title = i.alt; txt.appendChild(i); }
+      else txt.appendChild(document.createTextNode(f.text != null ? f.text : (f.raw || '')));
+    });
+    (ev.donations || []).forEach(function (d) {
+      if (d && d.amount) txt.appendChild(el('div', 'nota', '💰 ' + d.amount + ' ' + (d.currency || '')));
+    });
+    li.appendChild(txt); addLinha(li);
+  }
+  function sistema(ev) {
+    var id = ev.meta_id || ev.id; if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
+    addLinha(el('li', 'sistema', ev.raw || ev.text || ''));
+  }
+  function eventoKoi(ev) {
+    switch (ev.event_type) {
+      case 'RICH_MESSAGE': mensagem(ev); break;
+      case 'PLATFORM_MESSAGE': sistema(ev); break;
+      case 'META':   // mensagem apagada
+        if (ev.is_visible === false) {
+          var li = chatLista.querySelector('li[data-id="' + String(ev.meta_id || ev.id).replace(/"/g, '') + '"]');
+          if (li) li.remove();
+        }
+        break;
+      case 'CLEARCHAT':
+        chatLista.textContent = ''; chatVistos = {}; break;
+    }
+  }
+  function conectarChat(url) {
+    desconectarChat();
+    estadoChat('conectando ao Casterlabs...');
+    var w; try { w = new WebSocket(url); } catch (e) { estadoChat('não conectou', 'erro'); return; }
+    chatWs = w;
+    w.onmessage = function (m) {
+      var msg; try { msg = JSON.parse(m.data); } catch (e) { return; }
+      if (msg.type === 'PING') w.send(JSON.stringify({ type: 'PONG', data: {} }));
+      else if (msg.type === 'INIT') { w.send(JSON.stringify({ type: 'READY', data: {} })); estadoChat('ao vivo', 'on'); }
+      else if (msg.type === 'KOI_STATICS') (msg.data.history || []).forEach(eventoKoi);
+      else if (msg.type === 'KOI') eventoKoi(msg.data);
+      else if (msg.type === 'ERROR') estadoChat('erro do Casterlabs (link antigo?)', 'erro');
+    };
+    w.onclose = function () {
+      if (chatWs !== w) return;
+      chatWs = null; estadoChat('Casterlabs fechado? tentando de novo...', 'erro');
+      chatReligar = setTimeout(function () { conectarChat(url); }, 4000);
+    };
+  }
+  function desconectarChat() {
+    clearTimeout(chatReligar);
+    if (chatWs) { var w = chatWs; chatWs = null; try { w.close(); } catch (e) {} }
+  }
+
   function mostrarChat(on) {
-    var u = linkDireto(chatLink.value.trim());
-    if (on && !linkValido(u)) { chatAviso.textContent = 'Cole um link https:// (ou http://localhost) primeiro.'; on = false; }
+    var u = chatLink.value.trim(), ws = casterlabs(u);
+    if (on && !ws && !linkValido(u)) { chatAviso.textContent = 'Cole o link do widget de chat do Casterlabs primeiro.'; on = false; }
     else chatAviso.textContent = '';
     document.body.classList.toggle('chat-on', on);
     document.body.style.setProperty('--chat-l', chatLargura() + 'px');
-    if (on && chatFrame.getAttribute('src') !== u) chatFrame.src = u;
-    if (!on) chatFrame.removeAttribute('src');
+    chatBox.classList.toggle('modo-frame', on && !ws);
+    if (on && ws) { chatFrame.removeAttribute('src'); if (!chatWs) conectarChat(ws); }
+    else if (on) { desconectarChat(); estadoChat(''); if (chatFrame.getAttribute('src') !== u) chatFrame.src = u; }
+    else { desconectarChat(); chatFrame.removeAttribute('src'); }
     btnChat.setAttribute('aria-pressed', on ? 'true' : 'false');
     btnChat.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
     gravar('chat-on', on ? '1' : '0'); ajustar();
   }
   btnChat.addEventListener('click', function () { mostrarChat(!document.body.classList.contains('chat-on')); });
   chatLink.addEventListener('change', function () {
-    gravar('chat-link', chatLink.value.trim());
+    gravar('chat-link', chatLink.value.trim()); desconectarChat(); chatLista.textContent = ''; chatVistos = {};
     if (document.body.classList.contains('chat-on')) mostrarChat(true);
   });
   chatLarg.addEventListener('input', function () {
