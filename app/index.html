@@ -327,6 +327,26 @@
   body.vertical .alerta-presente { top: 520px; }
   @media (prefers-reduced-motion: reduce) { .alerta-presente { transition: opacity .3s; transform: translate(-50%, 0); } }
 
+  /* ===== Tocando agora (só no vertical): embaixo do jogo, acima da logo ===== */
+  .musica-live {
+    position: absolute; left: 50%; bottom: 300px; transform: translateX(-50%);
+    display: none; align-items: center; gap: 16px; width: 640px; padding: 12px 18px 12px 12px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(42,47,55,.94) 0, rgba(21,24,28,.94) 100%); border-bottom: 2px solid var(--ciano);
+    box-shadow: 0 6px 16px rgba(0,0,0,.5), inset 0 -8px 12px -8px rgba(0,221,246,.5);
+    font-family: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif; color: #fff;
+  }
+  body.vertical.ver-musica.tem-musica .musica-live { display: flex; }
+  .musica-live img { width: 76px; height: 76px; border-radius: 6px; object-fit: cover; flex: none; background: #15181C; }
+  .musica-live .ml-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .musica-live small { font-size: 14px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ciano); }
+  .musica-live strong { font-size: 28px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .musica-live span { font-size: 19px; font-weight: 600; color: var(--prata); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .musica-live .eq { display: flex; align-items: flex-end; gap: 4px; height: 34px; flex: none; }
+  .musica-live .eq i { width: 6px; height: 100%; border-radius: 2px; background: var(--ciano); transform-origin: bottom; animation: eq 1s ease-in-out infinite; }
+  .musica-live .eq i:nth-child(2) { animation-delay: -.3s; } .musica-live .eq i:nth-child(3) { animation-delay: -.6s; } .musica-live .eq i:nth-child(4) { animation-delay: -.15s; }
+  @keyframes eq { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+  @media (prefers-reduced-motion: reduce) { .musica-live .eq i { animation: none; transform: scaleY(.6); } }
+
   /* ===== Top doadores ===== */
   .top-doadores {
     position: absolute; top: 140px; left: var(--margem); width: 300px; display: none;
@@ -560,6 +580,10 @@
         <p class="nota">Crie um app grátis em developer.spotify.com com o Redirect URI <code>https://fa7games-overlay.vercel.app/</code>.</p>
       </div>
       <p class="nota" id="sp-status" role="status"></p>
+      <button id="btn-musica-live" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Música na live (vertical)</span><span class="alternar-estado">ligado</span>
+      </button>
+      <p class="nota">Mostra capa, nome e artista da música embaixo do jogo no overlay vertical. Some quando a música pausa.</p>
       <button class="leve" id="sp-sair" type="button" hidden>Desconectar Spotify</button>
     </section>
 
@@ -660,6 +684,11 @@
     <div class="alerta-presente" id="alerta-presente" aria-hidden="true">
       <div class="ap-img" id="ap-img"></div>
       <div class="ap-texto"><small id="ap-quem"></small><strong id="ap-oque"></strong></div>
+    </div>
+    <div class="musica-live" id="musica-live" aria-hidden="true">
+      <img id="ml-capa" alt="">
+      <div class="ml-texto"><small>&#x266B; tocando agora</small><strong id="ml-nome"></strong><span id="ml-artista"></span></div>
+      <span class="eq"><i></i><i></i><i></i><i></i></span>
     </div>
     <div class="top-doadores" id="top-doadores" aria-hidden="true">
       <h3>Top presentes</h3>
@@ -1006,7 +1035,7 @@
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
       : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, escuro: escuro, frase: frase,
           viewers: viewersTotal, viewersPlats: viewersLista, verViewers: verViewers,
-          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn };
+          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
   function enviarDiag() {
@@ -1030,6 +1059,8 @@
     if (typeof e.alertas === 'boolean') aplicarAlertas(e.alertas);
     if (typeof e.verTop === 'boolean') aplicarVerTop(e.verTop);
     if (noObs && Array.isArray(e.top)) mostrarTop(e.top);
+    if (typeof e.verMusica === 'boolean') aplicarVerMusica(e.verMusica);
+    if (noObs && 'musica' in e) mostrarMusicaLive(e.musica);
     if (e.pedido === 'video') { if (!noObs) oferecer(e.de).catch(function (err) { console.warn('WebRTC', err); }); return; }
     if (e.pedido === 'estado') { if (!noObs) enviar(); return; }
     if (typeof e.jogo === 'string' && document.activeElement !== faixa) {
@@ -1215,6 +1246,33 @@
   }
   aplicarVerViewers(ler('ver-viewers') !== '0');
   btnViewers.addEventListener('click', function () { aplicarVerViewers(!verViewers); avisar(true); enviar(); });
+
+  // ===== Tocando agora na live (vem do player do Spotify do site) =====
+  var musicaAtual = null, verMusica = true, btnMusicaLive = document.getElementById('btn-musica-live');
+  var mlCapa = document.getElementById('ml-capa'), mlNome = document.getElementById('ml-nome'), mlArtista = document.getElementById('ml-artista');
+  function aplicarVerMusica(on) {
+    verMusica = !!on; gravar('ver-musica', on ? '1' : '0');
+    document.body.classList.toggle('ver-musica', verMusica);
+    btnMusicaLive.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnMusicaLive.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+  }
+  function mostrarMusicaLive(m) {
+    var tem = !!(m && m.tocando && m.nome);
+    document.body.classList.toggle('tem-musica', tem);
+    if (!tem) return;
+    mlNome.textContent = String(m.nome); mlArtista.textContent = String(m.artista || '');
+    if (typeof m.capa === 'string' && /^https:\/\//.test(m.capa)) { if (mlCapa.src !== m.capa) mlCapa.src = m.capa; mlCapa.hidden = false; }
+    else mlCapa.hidden = true;
+  }
+  // chamado pelo player do site a cada mudança de estado; só manda para o OBS quando muda algo que aparece
+  function atualizarMusica(m) {
+    var antes = musicaAtual ? [musicaAtual.nome, musicaAtual.artista, musicaAtual.tocando].join('|') : '';
+    var agora = m ? [m.nome, m.artista, m.tocando].join('|') : '';
+    musicaAtual = m; mostrarMusicaLive(m);
+    if (antes !== agora) enviarDepois();
+  }
+  btnMusicaLive.addEventListener('click', function () { aplicarVerMusica(!verMusica); avisar(true); enviar(); });
+  aplicarVerMusica(ler('ver-musica') !== '0');
 
   // ===== Presentes: alerta + top doadores =====
   // O site lê os presentes no Casterlabs, mostra e repassa para o OBS. O OBS só exibe.
@@ -1431,6 +1489,7 @@
   function spDesconectar(msg) {
     spToken = null; spDevice = null; minhasCache = null; gravar('sp-token', '');
     if (spPlayer) { try { spPlayer.disconnect(); } catch (e) {} }
+    atualizarMusica(null);
     fecharBib(); spTela(); spStatus(msg || 'Spotify desconectado.');
   }
 
@@ -1469,6 +1528,11 @@
       if (img && /^https:\/\//.test(img.url)) spCapa.src = img.url;
     }
     spPosicao = st.position || 0; spDuracao = st.duration || 0; spPausado = st.paused; spMarca = performance.now();
+    if (t) {                                        // manda "tocando agora" para a live
+      var capas = (t.album && t.album.images) || [], capa = capas[1] || capas[0];
+      atualizarMusica({ nome: t.name, artista: (t.artists || []).map(function (a) { return a.name; }).join(', '),
+        capa: capa && capa.url, tocando: !st.paused });
+    }
     spPlay.innerHTML = st.paused ? '&#x25B6;' : '&#x23F8;';
     spPlay.setAttribute('aria-label', st.paused ? 'Tocar' : 'Pausar');
     mostrarTempo();
