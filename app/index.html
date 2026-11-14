@@ -1544,6 +1544,22 @@
   }
   setInterval(function () { if (!spPausado) mostrarTempo(); }, 500);
 
+  // "Tocando agora" de qualquer aparelho (site, app, celular, aba do Spotify): pergunta à API a cada 5 s
+  async function spConsultarTocando() {
+    if (!spToken) return;
+    try {
+      var r = await fetch('https://api.spotify.com/v1/me/player?additional_types=track', { headers: { Authorization: 'Bearer ' + await spAcesso() } });
+      if (r.status === 204) { atualizarMusica(null); return; }         // nada tocando em lugar nenhum
+      if (!r.ok) return;
+      var j = await r.json(), t = j && j.item;
+      if (!t || t.type !== 'track') { atualizarMusica(null); return; }
+      var capas = (t.album && t.album.images) || [], capa = capas[1] || capas[0];
+      atualizarMusica({ nome: t.name, artista: (t.artists || []).map(function (a) { return a.name; }).join(', '),
+        capa: capa && capa.url, tocando: !!j.is_playing });
+    } catch (e) {}
+  }
+  if (!document.body.classList.contains('obs')) setInterval(spConsultarTocando, 5000);
+
   async function spApi(caminho, corpo) {
     var r = await fetch('https://api.spotify.com/v1/me/player/' + caminho, {
       method: 'PUT', headers: { Authorization: 'Bearer ' + await spAcesso(), 'Content-Type': 'application/json' },
@@ -1699,7 +1715,7 @@
     addEventListener('keydown', function (e) { if (e.key === 'Escape' && !bib.hidden) { fecharBib(); btnBib.focus(); } });
     document.addEventListener('pointerdown', function (e) { if (!bib.hidden && !e.target.closest('.tocador')) fecharBib(); });
     spTela();
-    spRetorno().then(function () { spTela(); if (spToken) spCarregarSdk(); });
+    spRetorno().then(function () { spTela(); if (spToken) { spCarregarSdk(); spConsultarTocando(); } });
   }
 
   // ===== Chat do Casterlabs na lateral: só no navegador, nunca vai para o OBS =====
