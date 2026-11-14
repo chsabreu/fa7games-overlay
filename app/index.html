@@ -128,6 +128,13 @@
   .painel .generos button:hover { border-color: rgba(255,255,255,.3); filter: none; }
   .painel .generos button[aria-checked="true"] { background: rgba(0,221,246,.14); border-color: var(--ciano); color: var(--ciano); }
   .painel [hidden] { display: none !important; }
+  .painel .botao-link {
+    flex: 1; text-align: center; text-decoration: none; font-weight: 600; font-size: 13px;
+    padding: 9px 10px; border-radius: 6px; background: #1DB954; color: #04140a;
+  }
+  .painel .botao-link.leve { background: transparent; color: #E7ECF1; border: 1px solid rgba(255,255,255,.18); }
+  .painel .botao-link:hover { filter: brightness(1.08); }
+  .painel .botao-link:focus-visible { outline: 2px solid var(--branco); outline-offset: 2px; }
   .painel .player:empty { display: none; }
   .painel .player iframe { display: block; width: 100%; border: 0; border-radius: 12px; }
   /* ===== Chat na lateral esquerda (só no site) ===== */
@@ -358,7 +365,11 @@
         <p class="nota">Por sua conta: só use músicas que você tem certeza que podem tocar em live.</p>
       </div>
       <div class="player" id="player"></div>
-      <p class="nota">Para tocar as faixas inteiras (e não só 30 s), entre na sua conta do Spotify neste navegador.</p>
+      <div class="linha-acoes" id="musica-acoes" hidden>
+        <a class="botao-link" id="abrir-web" href="#" target="_blank" rel="noopener">Tocar inteira no Spotify</a>
+        <a class="botao-link leve" id="abrir-app" href="#">Abrir no app</a>
+      </div>
+      <p class="nota">Tocando só prévias de 30 s? O player daqui não está vendo seu login do Spotify. “Tocar inteira no Spotify” abre a playlist numa aba do Spotify, onde toca completa — e o som também entra na live.</p>
     </section>
 
     <section class="secao" aria-labelledby="t-chat">
@@ -986,7 +997,12 @@
     campoMinha.hidden = id !== 'minha';
     var g = GENEROS.filter(function (x) { return x[0] === id; })[0];
     var caminho = g && (g[2] || spotifyCaminho(minhaPlaylist.value));
+    var acoes = document.getElementById('musica-acoes');
+    acoes.hidden = !caminho;
     if (!caminho) { player.textContent = ''; return; }
+    // fallback: o app do Spotify toca as faixas inteiras (o player embutido pode ficar só nas prévias)
+    document.getElementById('abrir-app').href = 'spotify:' + caminho.replace('/', ':');
+    document.getElementById('abrir-web').href = 'https://open.spotify.com/' + caminho;
     var src = 'https://open.spotify.com/embed/' + caminho + '?theme=0';
     var f = player.querySelector('iframe');
     if (f && f.src === src) return;
