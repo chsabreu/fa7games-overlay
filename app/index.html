@@ -127,6 +127,7 @@
   }
   .painel .generos button:hover { border-color: rgba(255,255,255,.3); filter: none; }
   .painel .generos button[aria-checked="true"] { background: rgba(0,221,246,.14); border-color: var(--ciano); color: var(--ciano); }
+  .painel [hidden] { display: none !important; }
   .painel .player:empty { display: none; }
   .painel .player iframe { display: block; width: 100%; border: 0; border-radius: 12px; }
   /* ===== Chat na lateral esquerda (só no site) ===== */
@@ -991,7 +992,7 @@
     if (f && f.src === src) return;
     player.textContent = '';
     f = document.createElement('iframe');
-    f.src = src; f.height = 152; f.loading = 'lazy'; f.title = 'Player de música (' + g[1] + ')';
+    f.src = src; f.height = 152; f.title = 'Player de música (' + g[1] + ')';
     f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
     player.appendChild(f);
   }
