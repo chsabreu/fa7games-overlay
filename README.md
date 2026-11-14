@@ -13,7 +13,7 @@ Overlay para OBS (Browser Source) da live do fa7herTV. Página estática em 1920
 
 1. **Ferramentas → Configurações do servidor WebSocket → Ativar servidor WebSocket** (porta 4455). Copie a senha em "Mostrar informações de conexão".
 2. Adicione uma fonte **Navegador** com a URL `https://fa7games-overlay.vercel.app/?senha=SUA_SENHA`, 1920x1080.
-3. Para a webcam aparecer dentro do overlay no OBS, abra o OBS com o parâmetro `--enable-media-stream` (botão direito no atalho do OBS → Propriedades → Destino, acrescente no final). Sem isso, o OBS não libera câmera para fontes Navegador. Se a webcam também estiver numa fonte "Dispositivo de captura de vídeo", pode ser que só um dos dois consiga usá-la; nesse caso, remova ou oculte essa fonte.
+3. A webcam vem do site: deixe o site aberto no navegador (com a câmera ligada). Ele manda o vídeo para os overlays do OBS por WebRTC, combinado pelo OBS WebSocket. Não precisa de parâmetro no OBS. No Chrome, desative a Economia de memória para o site, para a aba não ser descartada.
 4. No site, digite a mesma senha no painel. O status deve mostrar **OBS conectado**.
 
 A senha fica salva só no navegador (localStorage) e na URL da fonte do OBS, nunca no código.
