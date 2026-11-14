@@ -365,7 +365,8 @@
 
     var z = Math.max(1, fx.zoom || 1), ar = W / H;
     var sh = Math.min(vh, vw / ar) / z, sw = sh * ar;
-    var sx = limitar(cx - sw / 2, 0, vw - sw), sy = limitar(cy - sh * 0.42, 0, vh - sh);
+    // rosto um pouco abaixo do meio do quadro: mostra a cabeça inteira e corta o pescoço/peito
+    var sx = limitar(cx - sw / 2, 0, vw - sw), sy = limitar(cy - sh * 0.6, 0, vh - sh);
     var cor = 'sepia(' + fx.calor + ') saturate(' + fx.cor + ') brightness(' + fx.luz + ') contrast(' + fx.contraste + ')';
 
     // Pessoa recortada a cada 2 quadros (reaproveita a última máscara no meio)
