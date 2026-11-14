@@ -115,7 +115,13 @@
   .cam .previa { text-align: center; padding: 0 12px; font-size: 16px; }
 
   /* ===== Painel de controle (barra lateral; some no OBS) ===== */
-  .aba { display: none; }
+  .aba, .chat { display: none; }
+  /* ===== Chat na lateral esquerda (só no site) ===== */
+  body.chat-on:not(.obs) .chat {
+    display: block; position: fixed; z-index: 25; top: 0; left: 0; bottom: 0; width: var(--chat-l, 360px);
+    background: #0D1014; border-right: 1px solid rgba(0,221,246,.22); box-shadow: 12px 0 32px rgba(0,0,0,.35);
+  }
+  .chat iframe { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
   body:not(.obs) .painel { display: flex; }
   .painel {
     position: fixed; z-index: 30; top: 0; right: 0; bottom: 0;
@@ -276,6 +282,21 @@
       <button id="btn-luz" class="cheio" type="button">Acender painel de luz</button>
     </section>
 
+    <section class="secao" aria-labelledby="t-chat">
+      <h2 id="t-chat">Chat (só para você)</h2>
+      <p class="nota">No Casterlabs, crie um widget de Chat e copie o link dele. Cole aqui: o chat aparece na lateral do site, nunca no OBS. O link fica salvo só neste navegador.</p>
+      <div class="campo">
+        <label for="chat-link">Link do widget de chat</label>
+        <input id="chat-link" type="password" autocomplete="off" spellcheck="false" placeholder="https://widgets.casterlabs.co/...">
+      </div>
+      <div class="ajuste"><label for="chat-largura">Largura</label><output for="chat-largura" data-fmt="px"></output>
+        <input id="chat-largura" type="range" min="260" max="560" step="10"></div>
+      <button id="btn-chat" class="alternar" type="button" aria-pressed="false">
+        <span class="alternar-texto">Mostrar chat</span><span class="alternar-estado">desligado</span>
+      </button>
+      <p class="nota" id="chat-aviso" role="status"></p>
+    </section>
+
     <section class="secao" aria-labelledby="t-obs">
       <h2 id="t-obs">Conexão com o OBS</h2>
       <span class="obs-status" id="obs-status" role="status">OBS desconectado</span>
@@ -290,6 +311,9 @@
     </section>
   </aside>
   <button class="aba" id="btn-abrir" type="button" aria-label="Abrir painel">&#x2039; Painel</button>
+  <aside class="chat" id="chat" aria-label="Chat da live">
+    <iframe id="chat-frame" title="Chat da live" referrerpolicy="no-referrer"></iframe>
+  </aside>
 
   <div id="palco">
     <div class="previa jogo"></div>
@@ -816,6 +840,39 @@
   btnLuz.addEventListener('click', function () { luz(!document.body.classList.contains('luz')); });
   corLuz(); mostrarValores();
 
+  // ===== Chat do Casterlabs na lateral: só no navegador, nunca vai para o OBS =====
+  var chatLink = document.getElementById('chat-link'), chatLarg = document.getElementById('chat-largura');
+  var btnChat = document.getElementById('btn-chat'), chatFrame = document.getElementById('chat-frame');
+  var chatAviso = document.getElementById('chat-aviso');
+  chatLink.value = ler('chat-link') || ''; chatLarg.value = ler('chat-largura') || 360;
+  function chatLargura() { return parseInt(chatLarg.value, 10) || 360; }
+  function linkValido(u) {
+    try {
+      var x = new URL(u);
+      return x.protocol === 'https:' || (x.protocol === 'http:' && /^(localhost|127\.0\.0\.1)$/.test(x.hostname));
+    } catch (e) { return false; }
+  }
+  function mostrarChat(on) {
+    var u = chatLink.value.trim();
+    if (on && !linkValido(u)) { chatAviso.textContent = 'Cole um link https:// (ou http://localhost) primeiro.'; on = false; }
+    else chatAviso.textContent = '';
+    document.body.classList.toggle('chat-on', on);
+    document.body.style.setProperty('--chat-l', chatLargura() + 'px');
+    if (on && chatFrame.getAttribute('src') !== u) chatFrame.src = u;
+    if (!on) chatFrame.removeAttribute('src');
+    btnChat.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnChat.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+    gravar('chat-on', on ? '1' : '0'); ajustar();
+  }
+  btnChat.addEventListener('click', function () { mostrarChat(!document.body.classList.contains('chat-on')); });
+  chatLink.addEventListener('change', function () {
+    gravar('chat-link', chatLink.value.trim());
+    if (document.body.classList.contains('chat-on')) mostrarChat(true);
+  });
+  chatLarg.addEventListener('input', function () {
+    gravar('chat-largura', chatLarg.value); document.body.style.setProperty('--chat-l', chatLargura() + 'px'); ajustar();
+  });
+
   // ===== Abrir / recolher o painel =====
   function painelAberto(on) {
     document.body.classList.toggle('painel-fechado', !on); gravar('painel', on ? 'aberto' : 'fechado'); ajustar();
@@ -843,12 +900,15 @@
     // No navegador, a prévia usa o espaço que sobra ao lado do painel
     var b = document.body.classList;
     var lateral = !b.contains('obs') && !b.contains('painel-fechado') && innerWidth > 760 ? 340 : 0;
-    var larg = innerWidth - lateral;
+    var esquerda = !b.contains('obs') && b.contains('chat-on') && innerWidth > 760 ? chatLargura() : 0;
+    var larg = Math.max(200, innerWidth - lateral - esquerda);
     var s = Math.min(larg / pw, innerHeight / ph);
-    palco.style.left = (larg / 2) + 'px';
+    palco.style.left = (esquerda + larg / 2) + 'px';
     palco.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
   }
   addEventListener('resize', ajustar); ajustar();
+  if (ler('chat-on') === '1' && !document.body.classList.contains('obs')) mostrarChat(true);
+  mostrarValores();
 </script>
 </body>
 </html>
