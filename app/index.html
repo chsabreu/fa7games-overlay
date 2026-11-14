@@ -73,6 +73,14 @@
   .cam-ce .marca { left: auto; right: var(--margem); }
   .cam-cd .cam { top: 150px; }
 
+  /* ===== Layout vertical 1080x1920 (TikTok/celular) — escolhido sozinho quando a fonte é mais alta que larga ===== */
+  body.vertical #palco { width: 1080px; height: 1920px; }
+  body.vertical .marca { left: 50%; right: auto; top: 70px; width: 560px; transform: translateX(-50%); }
+  body.vertical .cam { transform: scale(1.75); transform-origin: right bottom; right: 70px; bottom: 380px; top: auto; left: auto; }
+  body.vertical.cam-be .cam { left: 100px; right: auto; transform-origin: left bottom; }
+  body.vertical.cam-cd .cam, body.vertical.cam-ce .cam { top: 300px; bottom: auto; transform-origin: right top; }
+  body.vertical.cam-ce .cam { left: 100px; right: auto; transform-origin: left top; }
+
   /* ===== Prévia e painel (somem no modo OBS) ===== */
   .previa, .painel { display: none; }
   body:not(.obs) { background: #0E1013; }
@@ -158,6 +166,11 @@
       <option value="cd">Em cima, direita</option>
       <option value="ce">Em cima, esquerda</option>
     </select>
+    <label for="campo-previa">Prévia</label>
+    <select id="campo-previa">
+      <option value="horizontal">Horizontal</option>
+      <option value="vertical">Vertical</option>
+    </select>
     <span class="salvo" id="salvo" role="status"></span>
     <span class="quebra"></span>
     <span class="par"><label for="campo-senha">Senha do WebSocket</label>
@@ -172,6 +185,7 @@
     <span class="par"><label for="fx-calor">Tom quente</label><input id="fx-calor" type="range" min="0" max="0.4" step="0.01"></span>
     <button id="fx-padrao" class="leve" type="button">Padrão</button>
     <span class="fx-status" id="fx-status" role="status"></span>
+    <span class="fx-status" id="obs-cam" role="status"></span>
   </div>
 
   <div id="palco">
@@ -389,7 +403,9 @@
   }
   requestAnimationFrame(quadro);
 
-  function aviso(txt) { camMsg.textContent = txt; }
+  // No OBS ninguém vê a mensagem; ela vai para o painel do site pelo WebSocket
+  var camStatus = '';
+  function aviso(txt) { camMsg.textContent = txt; camStatus = txt; if (typeof enviarDiag === 'function') enviarDiag(); }
   async function cameras() {
     try { return (await navigator.mediaDevices.enumerateDevices()).filter(function (d) { return d.kind === 'videoinput'; }); }
     catch (e) { return []; }
@@ -417,7 +433,7 @@
       var s = await navigator.mediaDevices.getUserMedia({ video: pede, audio: false });
       if (meu !== nLigar) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
       stream = s; video.srcObject = s; camBox.classList.add('ao-vivo');
-      video.play().catch(function () {}); iniciarIA();
+      video.play().catch(function () {}); iniciarIA(); aviso('webcam ok');
       // Na 1ª vez os nomes das câmeras só aparecem depois da permissão
       if (webcam !== 'padrao' && !achou && s.getVideoTracks()[0].label !== webcam &&
           (await cameras()).some(function (d) { return d.label === webcam; })) return ligarCamera();
@@ -480,7 +496,7 @@
       } else if (msg.op === 2) {        // Conectado
         w.pronto = true; status('OBS conectado', 'on');
         // O overlay da live pede o estado atual; o site responde com o dele
-        if (noObs) enviar({ pedido: 'estado' }); else enviar();
+        if (noObs) { enviar({ pedido: 'estado' }); enviarDiag(); } else enviar();
       } else if (msg.op === 7) {        // Resposta
         var p = pedidos[d.requestId]; if (!p) return; delete pedidos[d.requestId];
         d.requestStatus.result ? p.ok(d.responseData || {}) : p.falha(new Error(d.requestStatus.comment || 'erro ' + d.requestStatus.code));
@@ -504,8 +520,22 @@
       : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
+  function enviarDiag() {
+    if (!noObs || !ws || !ws.pronto) return;
+    pedir('BroadcastCustomEvent', { eventData: {
+      app: 'fa7herTV', de: eu, diag: camStatus, formato: innerWidth + 'x' + innerHeight
+    } }).catch(function () {});
+  }
+  var obsCam = document.getElementById('obs-cam'), diags = {};
   function receber(e) {
     if (e.app !== 'fa7herTV' || e.de === eu) return;
+    if (typeof e.diag === 'string') {
+      if (!noObs) {
+        diags[e.formato || e.de] = e.diag;
+        obsCam.textContent = 'Webcam no OBS: ' + Object.keys(diags).map(function (k) { return k + ' ' + diags[k]; }).join(' · ');
+      }
+      return;
+    }
     if (e.pedido === 'estado') { if (!noObs) enviar(); return; }
     if (typeof e.jogo === 'string' && document.activeElement !== faixa) {
       faixa.textContent = e.jogo; campoJogo.value = e.jogo; gravar('jogo', e.jogo);
@@ -529,10 +559,19 @@
   listarCameras(); ligarCamera();
   conectar();
 
-  // Escala o palco 1920x1080 para caber em qualquer janela
+  // Horizontal (1920x1080) ou vertical (1080x1920): no OBS decide pelo formato da fonte;
+  // no navegador dá para ver a prévia vertical pelo painel. ?layout=vertical força.
   var palco = document.getElementById('palco');
+  var campoPrevia = document.getElementById('campo-previa');
+  campoPrevia.value = ler('previa') === 'vertical' ? 'vertical' : 'horizontal';
+  campoPrevia.addEventListener('change', function () { gravar('previa', campoPrevia.value); ajustar(); });
   function ajustar() {
-    var s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    var forcado = q.get('layout');
+    var vertical = forcado ? forcado === 'vertical'
+      : innerHeight > innerWidth || (!document.body.classList.contains('obs') && campoPrevia.value === 'vertical');
+    document.body.classList.toggle('vertical', vertical);
+    var pw = vertical ? 1080 : 1920, ph = vertical ? 1920 : 1080;
+    var s = Math.min(innerWidth / pw, innerHeight / ph);
     palco.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
   }
   addEventListener('resize', ajustar); ajustar();
