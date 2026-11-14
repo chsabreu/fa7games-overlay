@@ -193,6 +193,19 @@
   .chat-lista .emote { height: 24px; vertical-align: middle; }
   .chat-lista li.sistema { color: rgba(231,236,241,.45); font-size: 13px; font-style: italic; }
   .chat-lista li.doacao { border-left: 3px solid var(--ciano); background: rgba(0,221,246,.06); }
+  .chat-lista .presente { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-weight: 700; font-size: 15px; color: #fff; }
+  .chat-lista .presente img { width: 56px; height: 56px; object-fit: contain; flex: none; }
+  .chat-lista .presente .p-emoji { font-size: 34px; line-height: 1; }
+  .chat-lista .presente small { font-size: 12px; font-weight: 600; color: rgba(231,236,241,.6); }
+  .chat-lista li.evento { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #E7ECF1; border-left: 3px solid var(--cor-ev, var(--ciano)); background: rgba(255,255,255,.03); }
+  .chat-lista li.evento .ev-ic { flex: none; font-size: 16px; }
+  .chat-lista li.evento .ev-txt { flex: 1; min-width: 0; }
+  .chat-lista li.evento b { font-weight: 700; }
+  .chat-lista li.evento .hora { margin-left: 0; flex: none; font-size: 12px; color: rgba(231,236,241,.45); font-variant-numeric: tabular-nums; }
+  .chat-lista li.ev-follow { --cor-ev: #ff5a9a; } .chat-lista li.ev-sub { --cor-ev: #FFD24A; }
+  .chat-lista li.ev-raid { --cor-ev: #9146FF; } .chat-lista li.ev-pontos { --cor-ev: #53FC18; }
+  .chat-lista li.ev-entrada { padding-top: 3px; padding-bottom: 3px; font-size: 12px; color: rgba(231,236,241,.5); border-left-color: transparent; background: none; }
+  .chat-lista li.ev-entrada .ev-ic { font-size: 12px; }
   body:not(.obs) .painel { display: flex; }
   .painel {
     position: fixed; z-index: 30; top: 0; right: 0; bottom: 0;
@@ -638,6 +651,9 @@
         <input id="chat-largura" type="range" min="260" max="560" step="10"></div>
       <button id="btn-chat" class="alternar" type="button" aria-pressed="false">
         <span class="alternar-texto">Mostrar chat</span><span class="alternar-estado">desligado</span>
+      </button>
+      <button id="btn-entradas" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Entradas e saídas no chat</span><span class="alternar-estado">ligado</span>
       </button>
       <p class="nota" id="chat-aviso" role="status"></p>
     </section>
@@ -1947,10 +1963,56 @@
       else txt.appendChild(document.createTextNode(f.text != null ? f.text : (f.raw || '')));
     });
     (ev.donations || []).forEach(function (d) {
-      if (d && d.amount) txt.appendChild(el('div', 'nota', '💰 ' + d.amount + ' ' + (d.currency || '')));
+      if (!d) return;
+      var box = el('div', 'presente'), img = urlSegura(d.animated_image || d.animatedImage || d.image || d.imageLink);
+      if (img) { var gi = el('img'); gi.src = img; gi.alt = d.name || ''; gi.loading = 'lazy'; box.appendChild(gi); }
+      else box.appendChild(el('span', 'p-emoji', d.type === 'TWITCH_BITS' ? '💎' : '🎁'));
+      var qtd = Number(d.count || d.quantity || d.repeat_count) || 1, info = el('span');
+      info.appendChild(document.createTextNode('×' + qtd + (d.name ? ' ' + d.name : '')));
+      var moeda = String(d.currency || '').toUpperCase();
+      if (d.amount && moeda && moeda !== 'TIKTOK_COINS' && moeda !== 'COINS') { info.appendChild(el('br')); info.appendChild(el('small', '', d.amount + ' ' + moeda)); }
+      box.appendChild(info); txt.appendChild(box);
     });
     li.appendChild(txt); addLinha(li);
   }
+  // Seguir, inscrição, raid, pontos do canal, entradas/saídas: uma linha compacta
+  var entradasOn = ler('chat-entradas') !== '0';
+  var SIGLA = { TWITCH: 'TW', KICK: 'KICK', YOUTUBE: 'YT', TIKTOK: 'TT' };
+  function nomeDe(u) { return (u && (u.displayname || u.username)) || 'Alguém'; }
+  function evento(ev, cls, icone, partes) {
+    var id = ev.meta_id || ev.id; if (id && chatVistos[id + cls]) return; if (id) chatVistos[id + cls] = 1;
+    var li = el('li', 'evento ' + cls);
+    var pl = (ev.streamer && ev.streamer.platform) || (ev.sender && ev.sender.platform);
+    if (pl && cls !== 'ev-entrada') li.appendChild(el('span', 'plat ' + pl, SIGLA[pl] || pl));
+    li.appendChild(el('span', 'ev-ic', icone));
+    var tx = el('span', 'ev-txt');
+    partes.forEach(function (p) {
+      if (p && typeof p === 'object') { var b = el('b', '', nomeDe(p)); b.style.color = corLegivel(p.color); tx.appendChild(b); }
+      else tx.appendChild(document.createTextNode(p));
+    });
+    li.appendChild(tx);
+    var t = ev.timestamp ? new Date(ev.timestamp) : new Date();
+    li.appendChild(el('span', 'hora', ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2)));
+    addLinha(li);
+  }
+  function entradaSaida(ev) {
+    if (!entradasOn || carregandoHistorico) return;
+    var pl = ev.streamer && ev.streamer.platform, nome = String(ev.viewer.username || ev.viewer.displayname || '').toLowerCase();
+    if (!nome || nome === donos[pl] || ignorados().indexOf(nome) >= 0) return;
+    var entrou = ev.event_type === 'VIEWER_JOIN';
+    ev = Object.assign({}, ev, { id: (ev.id || ev.meta_id || nome + Date.now()) });
+    evento(ev, 'ev-entrada', entrou ? '→' : '←', [ev.viewer, entrou ? ' entrou' : ' saiu']);
+  }
+  var btnEntradas = document.getElementById('btn-entradas');
+  function aplicarEntradas(on) {
+    entradasOn = on; gravar('chat-entradas', on ? '1' : '0');
+    btnEntradas.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnEntradas.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+    if (!on) chatLista.querySelectorAll('li.ev-entrada').forEach(function (li) { li.remove(); });
+  }
+  btnEntradas.addEventListener('click', function () { aplicarEntradas(!entradasOn); });
+  aplicarEntradas(entradasOn);
+
   function sistema(ev) {
     var id = ev.meta_id || ev.id; if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
     addLinha(el('li', 'sistema', ev.raw || ev.text || ''));
@@ -1964,6 +2026,20 @@
         }
         mensagem(ev); break;
       case 'PLATFORM_MESSAGE': sistema(ev); break;
+      case 'FOLLOW':
+        evento(ev, 'ev-follow', '❤', [ev.follower || ev.sender, ' começou a seguir']); break;
+      case 'SUBSCRIPTION': {
+        var sub = ev.subscriber || ev.sender, meses = Number(ev.months) || 0, rec = ev.gift_recipients || ev.giftRecipients;
+        var tipo = String(ev.sub_type || ev.subType || '');
+        if (/GIFT/.test(tipo) && Array.isArray(rec) && rec.length) evento(ev, 'ev-sub', '🎁', [sub, ' deu ' + rec.length + (rec.length > 1 ? ' inscrições' : ' inscrição')]);
+        else if (/GIFT/.test(tipo) && rec && typeof rec === 'object') evento(ev, 'ev-sub', '🎁', [sub, ' deu uma inscrição para ', rec]);
+        else evento(ev, 'ev-sub', '⭐', [sub, meses > 1 ? ' se inscreveu há ' + meses + ' meses' : ' se inscreveu']);
+        break;
+      }
+      case 'RAID':
+        evento(ev, 'ev-raid', '🚀', [ev.host || ev.sender, ' chegou com uma raid de ' + (Number(ev.viewers) || 0) + ' pessoas']); break;
+      case 'CHANNEL_POINTS':
+        evento(ev, 'ev-pontos', '✨', [ev.sender, ' resgatou ' + ((ev.reward && ev.reward.title) || 'uma recompensa')]); break;
       case 'META':   // mensagem apagada
         if (ev.is_visible === false) {
           var li = chatLista.querySelector('li[data-id="' + String(ev.meta_id || ev.id).replace(/"/g, '') + '"]');
@@ -1987,7 +2063,7 @@
           var nomeV = String(ev.viewer.username || ev.viewer.displayname || '').toLowerCase();
           listasViewers[pl] = lv.filter(function (u) { return String(u.username || u.displayname || '').toLowerCase() !== nomeV; });
           if (ev.event_type === 'VIEWER_JOIN') listasViewers[pl].push(ev.viewer);
-          atualizarViewers();
+          atualizarViewers(); entradaSaida(ev);
         }
         break;
       case 'VIEWER_COUNT':
