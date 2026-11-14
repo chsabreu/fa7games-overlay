@@ -390,6 +390,12 @@
       </div>
 
       <div class="generos" id="generos" role="radiogroup" aria-label="Gênero"></div>
+      <div class="campo" id="sp-minhas-box" hidden>
+        <label for="sp-minhas">Suas playlists</label>
+        <select id="sp-minhas"><option value="">Escolha uma playlist para tocar</option></select>
+        <p class="nota">Por sua conta: só toque na live o que você sabe que é liberado.</p>
+      </div>
+      <button class="leve" id="sp-liberar" type="button" hidden>Liberar minhas playlists</button>
       <div class="campo" id="campo-minha" hidden>
         <label for="minha-playlist">Link de playlist ou álbum do Spotify</label>
         <input id="minha-playlist" type="text" autocomplete="off" spellcheck="false" placeholder="https://open.spotify.com/playlist/...">
@@ -1011,7 +1017,7 @@
     ['rock', 'Rock', 'playlist/3DBZowKNagHlV5ME32tPvF'],
     ['minha', 'Minha playlist', null]
   ];
-  var SP_ESCOPOS = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state';
+  var SP_ESCOPOS = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
   var spRedirect = location.origin + '/';
   var generosBox = document.getElementById('generos');
   var campoMinha = document.getElementById('campo-minha'), minhaPlaylist = document.getElementById('minha-playlist');
@@ -1031,6 +1037,30 @@
   function spTela() {
     var logado = !!spToken;
     spConectarBox.hidden = logado; spSair.hidden = !logado; spControles.hidden = !spDevice;
+    var podeListar = logado && / playlist-read-private( |$)/.test(' ' + (spToken.escopo || ''));
+    document.getElementById('sp-liberar').hidden = !logado || podeListar;
+    document.getElementById('sp-minhas-box').hidden = !podeListar;
+  }
+  // Suas playlists (precisa da permissão playlist-read-private)
+  var spMinhas = document.getElementById('sp-minhas'), spMinhasCarregadas = false;
+  async function spCarregarPlaylists() {
+    if (spMinhasCarregadas || !spToken || !/playlist-read-private/.test(spToken.escopo || '')) return;
+    spMinhasCarregadas = true;
+    try {
+      var url = 'https://api.spotify.com/v1/me/playlists?limit=50', lista = [];
+      while (url && lista.length < 300) {
+        var r = await fetch(url, { headers: { Authorization: 'Bearer ' + await spAcesso() } });
+        if (!r.ok) throw new Error('erro ' + r.status);
+        var j = await r.json();
+        lista = lista.concat((j.items || []).filter(Boolean)); url = j.next;
+      }
+      spMinhas.length = 1;
+      lista.forEach(function (p) {
+        var total = p.tracks && typeof p.tracks.total === 'number' ? ' (' + p.tracks.total + ')' : '';
+        spMinhas.add(new Option(p.name + total, 'playlist/' + p.id));
+      });
+      spMinhas.options[0].text = lista.length ? 'Escolha uma playlist para tocar' : 'Nenhuma playlist encontrada';
+    } catch (e) { spMinhasCarregadas = false; spStatus('Não consegui listar suas playlists: ' + e.message, 'erro'); }
   }
   function b64url(buf) {
     return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -1059,7 +1089,8 @@
     });
     var j = await r.json().catch(function () { return {}; });
     if (!r.ok) throw new Error(j.error_description || j.error || ('erro ' + r.status));
-    spToken = { access: j.access_token, refresh: j.refresh_token || (spToken && spToken.refresh), expira: Date.now() + (j.expires_in - 60) * 1000 };
+    spToken = { access: j.access_token, refresh: j.refresh_token || (spToken && spToken.refresh),
+      escopo: j.scope || (spToken && spToken.escopo) || '', expira: Date.now() + (j.expires_in - 60) * 1000 };
     gravar('sp-token', JSON.stringify(spToken));
     return spToken.access;
   }
@@ -1165,13 +1196,19 @@
     });
     document.getElementById('sp-btn-conectar').addEventListener('click', spConectar);
     spSair.addEventListener('click', function () { spDesconectar(); });
+    document.getElementById('sp-liberar').addEventListener('click', spConectar);   // pede a permissão nova
+    spMinhas.addEventListener('change', function () {
+      if (!spMinhas.value) return;
+      generosBox.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', 'false'); });
+      campoMinha.hidden = true; spTocar(spMinhas.value);
+    });
     spPlay.addEventListener('click', function () { if (spPlayer) { spPlayer.activateElement(); spPlayer.togglePlay(); } });
     document.getElementById('sp-ant').addEventListener('click', function () { if (spPlayer) spPlayer.previousTrack(); });
     document.getElementById('sp-prox').addEventListener('click', function () { if (spPlayer) spPlayer.nextTrack(); });
     spVolume.addEventListener('input', function () { gravar('sp-volume', spVolume.value); if (spPlayer) spPlayer.setVolume(parseFloat(spVolume.value)); });
     if (genero) tocarGenero(genero, false);
     spTela();
-    spRetorno().then(function () { spTela(); if (spToken) spCarregarSdk(); });
+    spRetorno().then(function () { spTela(); if (spToken) { spCarregarSdk(); spCarregarPlaylists(); } });
   }
 
   // ===== Chat do Casterlabs na lateral: só no navegador, nunca vai para o OBS =====
