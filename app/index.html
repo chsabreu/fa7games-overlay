@@ -290,6 +290,83 @@
   body.luz:not(.obs) { background: var(--luz-cor, #fff); }
   body.luz:not(.obs) .previa.jogo, body.luz:not(.obs) .previa.aviso { display: none; }
   .painel button.cheio[aria-pressed="true"] { background: #161A20; color: #fff; border: 1px solid rgba(255,255,255,.3); }
+  /* ===== Player do Spotify na parte de baixo do site (só no site, só conectado) ===== */
+  .tocador { display: none; }
+  body.sp-on:not(.obs) .tocador {
+    display: block; position: fixed; z-index: 28; left: var(--esq, 0px); right: var(--dir, 0px); bottom: 0;
+    font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7ECF1;
+  }
+  .tocador [hidden] { display: none !important; }
+  .tocador button { font: inherit; color: inherit; background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
+  .tocador button:focus-visible, .tocador input:focus-visible { outline: 2px solid var(--ciano); outline-offset: 2px; }
+  .tocador input[type=range] { accent-color: var(--ciano); margin: 0; }
+  .tocador .icone { width: 34px; height: 34px; font-size: 16px; color: rgba(231,236,241,.8); }
+  .tocador .icone:hover { color: var(--ciano); }
+  .tocador .barra {
+    height: 76px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: center; gap: 16px; padding: 0 16px;
+    background: rgba(13,16,20,.97); border-top: 1px solid rgba(0,221,246,.25); box-shadow: 0 -12px 32px rgba(0,0,0,.4);
+  }
+  .tocador .atual { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .tocador .atual img { width: 52px; height: 52px; border-radius: 6px; object-fit: cover; background: #161A20; flex: none; }
+  .tocador .faixa-info { display: flex; flex-direction: column; min-width: 0; }
+  .tocador .faixa-info strong, .tocador .faixa-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tocador .faixa-info span { font-size: 12px; color: rgba(231,236,241,.6); }
+  .tocador .centro { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  .tocador .controles { display: flex; align-items: center; gap: 12px; }
+  .tocador .play { width: 38px; height: 38px; border-radius: 50%; background: #fff; color: #0D1014; font-size: 14px; }
+  .tocador .play:hover { background: var(--ciano); }
+  .tocador .progresso {
+    display: flex; align-items: center; gap: 8px; width: 100%; max-width: 520px;
+    font-size: 11px; color: rgba(231,236,241,.55); font-variant-numeric: tabular-nums;
+  }
+  .tocador .progresso input { flex: 1; }
+  .tocador .direita { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+  .tocador .direita .vol { font-size: 14px; opacity: .7; }
+  .tocador .direita input { width: 96px; }
+  .tocador .biblio {
+    padding: 8px 14px; border-radius: 999px; font-weight: 600; white-space: nowrap;
+    color: var(--ciano); border: 1px solid rgba(0,221,246,.45);
+  }
+  .tocador .biblio:hover, .tocador .biblio[aria-expanded="true"] { background: rgba(0,221,246,.14); }
+
+  .tocador .biblioteca {
+    position: absolute; bottom: 86px; right: 16px; width: min(560px, calc(100% - 32px)); max-height: min(560px, 70vh);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #0D1014; border: 1px solid rgba(0,221,246,.25); border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,.6);
+  }
+  .tocador .bib-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .tocador .abas { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tocador .abas button { padding: 7px 12px; border-radius: 999px; font-weight: 600; color: rgba(231,236,241,.65); }
+  .tocador .abas button:hover { color: #fff; }
+  .tocador .abas button[aria-selected="true"] { background: #1C2128; color: #fff; }
+  .tocador .bib-busca { padding: 10px 12px 0; }
+  .tocador .bib-busca input {
+    width: 100%; font: inherit; color: #fff; background: #161A20;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 9px 14px;
+  }
+  .tocador .bib-voltar { display: flex; align-items: center; gap: 8px; padding: 10px 12px 0; min-width: 0; }
+  .tocador .bib-voltar strong { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tocador .tocar-tudo { padding: 7px 14px; border-radius: 999px; background: var(--ciano); color: #001014; font-weight: 700; white-space: nowrap; }
+  .tocador .bib-lista { list-style: none; margin: 0; padding: 6px; overflow-y: auto; overscroll-behavior: contain; flex: 1; }
+  .tocador .bib-lista .sec { padding: 10px 8px 4px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(231,236,241,.45); }
+  .tocador .item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 7px 8px; text-align: left; border-radius: 8px; }
+  .tocador .item:hover { background: rgba(255,255,255,.05); }
+  .tocador .item .capa {
+    width: 44px; height: 44px; flex: none; border-radius: 4px; object-fit: cover; background: #1C2128;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--ciano);
+  }
+  .tocador .item .t { display: flex; flex-direction: column; min-width: 0; }
+  .tocador .item .t strong, .tocador .item .t span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tocador .item .t span { font-size: 12px; color: rgba(231,236,241,.55); }
+  .tocador .item .selo-livre { margin-left: auto; flex: none; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--ciano); border: 1px solid rgba(0,221,246,.4); border-radius: 4px; padding: 2px 6px; }
+  .tocador .bib-msg { padding: 8px 16px 14px; font-size: 12px; color: rgba(231,236,241,.55); }
+  .tocador .bib-msg:empty { display: none; }
+  .tocador .bib-msg button { margin-top: 8px; padding: 8px 14px; border-radius: 999px; background: var(--ciano); color: #001014; font-weight: 700; }
+  @media (max-width: 820px) {
+    .tocador .barra { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
+    .tocador .progresso, .tocador .direita .vol, .tocador .direita input { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -367,39 +444,14 @@
 
     <section class="secao" aria-labelledby="t-musica">
       <h2 id="t-musica">Música</h2>
-      <p class="nota">Playlists da StreamBeats: livres para lives na Twitch, Kick e YouTube, sem precisar dar crédito. Toca aqui no site e entra na live pelo áudio do desktop do OBS.</p>
-
+      <p class="nota">Conecte seu Spotify Premium: o player aparece na parte de baixo do site. As playlists da StreamBeats (aba Gêneros) são livres para lives, sem precisar dar crédito. O som entra na live pelo áudio do desktop do OBS.</p>
       <div class="sp-conectar" id="sp-conectar">
         <div class="campo">
           <label for="sp-client">Client ID do seu app no Spotify</label>
           <input id="sp-client" type="text" autocomplete="off" spellcheck="false" placeholder="32 letras e números">
         </div>
         <button id="sp-btn-conectar" type="button">Conectar Spotify</button>
-        <p class="nota">Precisa de Spotify Premium. Crie um app grátis em developer.spotify.com com o Redirect URI <code>https://fa7games-overlay.vercel.app/</code>.</p>
-      </div>
-
-      <div class="tocando" id="sp-tocando" hidden>
-        <img id="sp-capa" alt="" width="56" height="56">
-        <div class="faixa-info"><strong id="sp-musica">—</strong><span id="sp-artista"></span></div>
-      </div>
-      <div class="controles" id="sp-controles" hidden>
-        <button class="icone" id="sp-ant" type="button" aria-label="Música anterior">&#x23EE;</button>
-        <button class="play" id="sp-play" type="button" aria-label="Tocar">&#x25B6;</button>
-        <button class="icone" id="sp-prox" type="button" aria-label="Próxima música">&#x23ED;</button>
-        <input id="sp-volume" type="range" min="0" max="1" step="0.05" aria-label="Volume">
-      </div>
-
-      <div class="generos" id="generos" role="radiogroup" aria-label="Gênero"></div>
-      <div class="campo" id="sp-minhas-box" hidden>
-        <label for="sp-minhas">Suas playlists</label>
-        <select id="sp-minhas"><option value="">Escolha uma playlist para tocar</option></select>
-        <p class="nota">Por sua conta: só toque na live o que você sabe que é liberado.</p>
-      </div>
-      <button class="leve" id="sp-liberar" type="button" hidden>Liberar minhas playlists</button>
-      <div class="campo" id="campo-minha" hidden>
-        <label for="minha-playlist">Link de playlist ou álbum do Spotify</label>
-        <input id="minha-playlist" type="text" autocomplete="off" spellcheck="false" placeholder="https://open.spotify.com/playlist/...">
-        <p class="nota">Por sua conta: só use músicas que você tem certeza que podem tocar em live.</p>
+        <p class="nota">Crie um app grátis em developer.spotify.com com o Redirect URI <code>https://fa7games-overlay.vercel.app/</code>.</p>
       </div>
       <p class="nota" id="sp-status" role="status"></p>
       <button class="leve" id="sp-sair" type="button" hidden>Desconectar Spotify</button>
@@ -444,6 +496,52 @@
     <iframe id="chat-frame" title="Chat da live" referrerpolicy="no-referrer"
       allow="local-network-access; local-network; loopback-network; autoplay"></iframe>
   </aside>
+
+  <div class="tocador" id="tocador" role="region" aria-label="Player do Spotify">
+    <div class="biblioteca" id="biblioteca" hidden role="dialog" aria-label="Biblioteca de músicas">
+      <div class="bib-topo">
+        <div class="abas" role="tablist">
+          <button type="button" role="tab" data-aba="generos" aria-selected="true">Gêneros</button>
+          <button type="button" role="tab" data-aba="minhas" aria-selected="false">Suas playlists</button>
+          <button type="button" role="tab" data-aba="busca" aria-selected="false">Pesquisar</button>
+        </div>
+        <button class="icone" id="bib-fechar" type="button" aria-label="Fechar biblioteca">&#x2715;</button>
+      </div>
+      <div class="bib-busca" id="bib-busca" hidden>
+        <input id="bib-q" type="search" autocomplete="off" placeholder="Música, artista ou playlist" aria-label="Pesquisar no Spotify">
+      </div>
+      <div class="bib-voltar" id="bib-voltar" hidden>
+        <button class="icone" id="bib-voltar-btn" type="button" aria-label="Voltar">&#x2039;</button>
+        <strong id="bib-titulo"></strong>
+        <button class="tocar-tudo" id="bib-tocar-tudo" type="button">&#x25B6; Tocar</button>
+      </div>
+      <ul class="bib-lista" id="bib-lista"></ul>
+      <p class="bib-msg" id="bib-msg" role="status"></p>
+    </div>
+    <div class="barra">
+      <div class="atual">
+        <img id="sp-capa" alt="" width="52" height="52">
+        <div class="faixa-info"><strong id="sp-musica">Nada tocando</strong><span id="sp-artista">Abra a biblioteca para escolher</span></div>
+      </div>
+      <div class="centro">
+        <div class="controles">
+          <button class="icone" id="sp-ant" type="button" aria-label="Música anterior">&#x23EE;</button>
+          <button class="play" id="sp-play" type="button" aria-label="Tocar">&#x25B6;</button>
+          <button class="icone" id="sp-prox" type="button" aria-label="Próxima música">&#x23ED;</button>
+        </div>
+        <div class="progresso">
+          <span id="sp-tempo">0:00</span>
+          <input id="sp-pos" type="range" min="0" max="1000" value="0" aria-label="Posição da música">
+          <span id="sp-total">0:00</span>
+        </div>
+      </div>
+      <div class="direita">
+        <span class="vol" aria-hidden="true">&#x1F50A;</span>
+        <input id="sp-volume" type="range" min="0" max="1" step="0.05" aria-label="Volume">
+        <button class="biblio" id="btn-biblioteca" type="button" aria-expanded="false" aria-controls="biblioteca">&#x266B; Biblioteca</button>
+      </div>
+    </div>
+  </div>
 
   <div id="palco">
     <div class="previa jogo"></div>
@@ -1003,76 +1101,47 @@
   btnLuz.addEventListener('click', function () { luz(!document.body.classList.contains('luz')); });
   corLuz(); mostrarValores();
 
-  // ===== Música: Spotify conectado (o site vira um aparelho do Spotify); só no site =====
+  // ===== Música: Spotify conectado. O site vira um aparelho do Spotify; player embaixo do site =====
   // Login com PKCE (sem senha nem segredo no código). Os tokens ficam só neste navegador.
   var GENEROS = [
-    ['lofi', 'Lo-fi', 'playlist/4kAqBBEZQsBIXMIJl6u8tO'],
-    ['hiphop', 'Hip-hop', 'playlist/4X52HPxkyj1MQRV4UulYns'],
-    ['edm', 'Eletrônica', 'playlist/76DR3PNoHa9OupODuzdMfN'],
-    ['synthwave', 'Synthwave', 'playlist/2gjWL0J5SQKceERGJ8Lb5e'],
-    ['chiptune', 'Chiptune', 'playlist/4oteQd86dwxqXg60z8wfQ6'],
-    ['ambient', 'Ambiente', 'playlist/2XKQYeY9DAg0dl0LKux1Bk'],
-    ['hifi', 'Hi-Fi', 'playlist/2A9L25I2elZJ8puLTJSb9H'],
-    ['indiepop', 'Indie pop', 'playlist/5bLqnWX3PesKB1BQ01Erzu'],
-    ['rock', 'Rock', 'playlist/3DBZowKNagHlV5ME32tPvF'],
-    ['minha', 'Minha playlist', null]
+    ['Lo-fi', 'playlist/4kAqBBEZQsBIXMIJl6u8tO'], ['Hip-hop', 'playlist/4X52HPxkyj1MQRV4UulYns'],
+    ['Eletrônica', 'playlist/76DR3PNoHa9OupODuzdMfN'], ['Synthwave', 'playlist/2gjWL0J5SQKceERGJ8Lb5e'],
+    ['Chiptune', 'playlist/4oteQd86dwxqXg60z8wfQ6'], ['Ambiente', 'playlist/2XKQYeY9DAg0dl0LKux1Bk'],
+    ['Hi-Fi', 'playlist/2A9L25I2elZJ8puLTJSb9H'], ['Indie pop', 'playlist/5bLqnWX3PesKB1BQ01Erzu'],
+    ['Rock', 'playlist/3DBZowKNagHlV5ME32tPvF']
   ];
   var SP_ESCOPOS = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative';
   var spRedirect = location.origin + '/';
-  var generosBox = document.getElementById('generos');
-  var campoMinha = document.getElementById('campo-minha'), minhaPlaylist = document.getElementById('minha-playlist');
-  var spClient = document.getElementById('sp-client'), spStatusEl = document.getElementById('sp-status');
-  var spConectarBox = document.getElementById('sp-conectar'), spSair = document.getElementById('sp-sair');
-  var spTocandoBox = document.getElementById('sp-tocando'), spControles = document.getElementById('sp-controles');
-  var spCapa = document.getElementById('sp-capa'), spMusica = document.getElementById('sp-musica'), spArtista = document.getElementById('sp-artista');
-  var spPlay = document.getElementById('sp-play'), spVolume = document.getElementById('sp-volume');
-  var genero = ler('genero') || '';
+  function $(id) { return document.getElementById(id); }
+  var spClient = $('sp-client'), spStatusEl = $('sp-status'), spConectarBox = $('sp-conectar'), spSair = $('sp-sair');
+  var spCapa = $('sp-capa'), spMusica = $('sp-musica'), spArtista = $('sp-artista');
+  var spPlay = $('sp-play'), spVolume = $('sp-volume'), spPos = $('sp-pos'), spTempo = $('sp-tempo'), spTotal = $('sp-total');
+  var bib = $('biblioteca'), btnBib = $('btn-biblioteca'), bibLista = $('bib-lista'), bibMsg = $('bib-msg');
+  var bibBusca = $('bib-busca'), bibQ = $('bib-q'), bibVoltar = $('bib-voltar'), bibTitulo = $('bib-titulo');
   var spToken = null; try { spToken = JSON.parse(ler('sp-token') || 'null'); } catch (e) {}
   var spPlayer = null, spDevice = null, spSdkPedido = false;
-  minhaPlaylist.value = ler('minha-playlist') || '';
+  var spPosicao = 0, spDuracao = 0, spPausado = true, spMarca = 0, spArrastando = false;
+  var bibAba = 'generos', bibAberta = null, minhasCache = null;
   spClient.value = ler('sp-client') || '';
   spVolume.value = ler('sp-volume') || 0.5;
 
   function spStatus(t, tipo) { spStatusEl.textContent = t || ''; spStatusEl.style.color = tipo === 'erro' ? '#ff8a8a' : tipo === 'on' ? 'var(--ciano)' : ''; }
+  function temEscopo(s) { return !!spToken && (' ' + (spToken.escopo || '') + ' ').indexOf(' ' + s + ' ') >= 0; }
   function spTela() {
     var logado = !!spToken;
-    spConectarBox.hidden = logado; spSair.hidden = !logado; spControles.hidden = !spDevice;
-    var podeListar = logado && / playlist-read-private( |$)/.test(' ' + (spToken.escopo || ''));
-    document.getElementById('sp-liberar').hidden = !logado || podeListar;
-    document.getElementById('sp-minhas-box').hidden = !podeListar;
-  }
-  // Suas playlists (precisa da permissão playlist-read-private)
-  var spMinhas = document.getElementById('sp-minhas'), spMinhasCarregadas = false;
-  async function spCarregarPlaylists() {
-    if (spMinhasCarregadas || !spToken || !/playlist-read-private/.test(spToken.escopo || '')) return;
-    spMinhasCarregadas = true;
-    try {
-      var url = 'https://api.spotify.com/v1/me/playlists?limit=50', lista = [];
-      while (url && lista.length < 300) {
-        var r = await fetch(url, { headers: { Authorization: 'Bearer ' + await spAcesso() } });
-        if (!r.ok) throw new Error('erro ' + r.status);
-        var j = await r.json();
-        lista = lista.concat((j.items || []).filter(Boolean)); url = j.next;
-      }
-      spMinhas.length = 1;
-      lista.forEach(function (p) {
-        var total = p.tracks && typeof p.tracks.total === 'number' ? ' (' + p.tracks.total + ')' : '';
-        spMinhas.add(new Option(p.name + total, 'playlist/' + p.id));
-      });
-      spMinhas.options[0].text = lista.length ? 'Escolha uma playlist para tocar' : 'Nenhuma playlist encontrada';
-    } catch (e) { spMinhasCarregadas = false; spStatus('Não consegui listar suas playlists: ' + e.message, 'erro'); }
+    spConectarBox.hidden = logado; spSair.hidden = !logado;
+    document.body.classList.toggle('sp-on', logado);
+    if (palco) ajustar();
   }
   function b64url(buf) {
     return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
   function aleatorio(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a).slice(0, n); }
-  function spotifyCaminho(u) {
-    var m = /open\.spotify\.com\/(?:intl-[a-z-]+\/)?(playlist|album)\/([A-Za-z0-9]{10,40})/.exec(u || '');
-    return m ? m[1] + '/' + m[2] : null;
-  }
+  function mmss(ms) { var s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
 
+  // ---- Login ----
   async function spConectar() {
-    var id = spClient.value.trim();
+    var id = (spClient.value || ler('sp-client') || '').trim();
     if (!/^[0-9a-f]{32}$/i.test(id)) { spStatus('Cole o Client ID do seu app (32 letras e números).', 'erro'); return; }
     gravar('sp-client', id);
     var verificador = aleatorio(64), estado = aleatorio(16);
@@ -1099,8 +1168,7 @@
     if (Date.now() < spToken.expira) return spToken.access;
     return spPedirToken({ grant_type: 'refresh_token', refresh_token: spToken.refresh, client_id: ler('sp-client') });
   }
-  // Volta do login do Spotify: troca o código por token e limpa a barra de endereço
-  async function spRetorno() {
+  async function spRetorno() {               // volta do login: troca o código por token e limpa a barra
     var code = q.get('code'), erro = q.get('error');
     if (!code && !erro) return;
     var limpo = new URLSearchParams(location.search);
@@ -1116,14 +1184,15 @@
     gravar('sp-verifier', ''); gravar('sp-state', '');
   }
   function spDesconectar(msg) {
-    spToken = null; spDevice = null; gravar('sp-token', '');
+    spToken = null; spDevice = null; minhasCache = null; gravar('sp-token', '');
     if (spPlayer) { try { spPlayer.disconnect(); } catch (e) {} }
-    spTocandoBox.hidden = true; spTela(); spStatus(msg || 'Spotify desconectado.');
+    fecharBib(); spTela(); spStatus(msg || 'Spotify desconectado.');
   }
 
+  // ---- Player (Web Playback SDK) ----
   function spCarregarSdk() {
     if (spSdkPedido) return; spSdkPedido = true;
-    spStatus('Ligando o player do Spotify...');
+    spArtista.textContent = 'Ligando o player...';
     window.onSpotifyWebPlaybackSDKReady = function () {
       spPlayer = new Spotify.Player({
         name: 'fa7herTV overlay', volume: parseFloat(spVolume.value) || 0.5,
@@ -1131,12 +1200,15 @@
           spAcesso().then(cb).catch(function () { spDesconectar('Sessão do Spotify expirou. Conecte de novo.'); });
         }
       });
-      spPlayer.addListener('ready', function (d) { spDevice = d.device_id; spTela(); spStatus('Pronto! Escolha um gênero.', 'on'); });
-      spPlayer.addListener('not_ready', function () { spDevice = null; spTela(); spStatus('Spotify caiu, reconectando...', 'erro'); });
-      spPlayer.addListener('initialization_error', function () { spStatus('Este navegador não conseguiu iniciar o Spotify.', 'erro'); });
+      spPlayer.addListener('ready', function (d) {
+        spDevice = d.device_id; spStatus('Conectado. O player está embaixo do site.', 'on');
+        if (spMusica.textContent === 'Nada tocando') spArtista.textContent = 'Abra a biblioteca para escolher';
+      });
+      spPlayer.addListener('not_ready', function () { spDevice = null; spArtista.textContent = 'Spotify caiu, reconectando...'; });
+      spPlayer.addListener('initialization_error', function () { spArtista.textContent = 'Este navegador não iniciou o Spotify.'; });
       spPlayer.addListener('authentication_error', function () { spDesconectar('Login do Spotify expirou. Conecte de novo.'); });
-      spPlayer.addListener('account_error', function () { spStatus('O Spotify só toca aqui com conta Premium.', 'erro'); });
-      spPlayer.addListener('playback_error', function (e) { spStatus('Erro ao tocar: ' + e.message, 'erro'); });
+      spPlayer.addListener('account_error', function () { spArtista.textContent = 'O Spotify só toca aqui com Premium.'; });
+      spPlayer.addListener('playback_error', function (e) { spArtista.textContent = 'Erro ao tocar: ' + e.message; });
       spPlayer.addListener('player_state_changed', spEstado);
       spPlayer.connect();
     };
@@ -1150,65 +1222,167 @@
       spArtista.textContent = (t.artists || []).map(function (a) { return a.name; }).join(', ');
       var imgs = (t.album && t.album.images) || [], img = imgs[imgs.length - 1];
       if (img && /^https:\/\//.test(img.url)) spCapa.src = img.url;
-      spTocandoBox.hidden = false;
     }
+    spPosicao = st.position || 0; spDuracao = st.duration || 0; spPausado = st.paused; spMarca = performance.now();
     spPlay.innerHTML = st.paused ? '&#x25B6;' : '&#x23F8;';
     spPlay.setAttribute('aria-label', st.paused ? 'Tocar' : 'Pausar');
+    mostrarTempo();
   }
+  function mostrarTempo() {
+    var pos = spPausado ? spPosicao : Math.min(spDuracao, spPosicao + (performance.now() - spMarca));
+    spTempo.textContent = mmss(pos); spTotal.textContent = mmss(spDuracao);
+    if (!spArrastando) spPos.value = spDuracao ? Math.round(pos / spDuracao * 1000) : 0;
+  }
+  setInterval(function () { if (!spPausado) mostrarTempo(); }, 500);
+
   async function spApi(caminho, corpo) {
-    var tk = await spAcesso();
     var r = await fetch('https://api.spotify.com/v1/me/player/' + caminho, {
-      method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+      method: 'PUT', headers: { Authorization: 'Bearer ' + await spAcesso(), 'Content-Type': 'application/json' },
       body: corpo ? JSON.stringify(corpo) : undefined
     });
     if (!r.ok) { var j = await r.json().catch(function () { return {}; }); throw new Error((j.error && j.error.message) || ('erro ' + r.status)); }
   }
-  async function spTocar(caminho) {
-    if (!spPlayer || !spDevice) { spStatus(spToken ? 'O player do Spotify ainda está ligando...' : 'Conecte o Spotify primeiro.', 'erro'); return; }
-    spPlayer.activateElement();                      // libera o áudio no próprio clique
+  async function spGet(url) {
+    var r = await fetch(url.indexOf('http') === 0 ? url : 'https://api.spotify.com/v1/' + url, { headers: { Authorization: 'Bearer ' + await spAcesso() } });
+    if (!r.ok) { var e = new Error('erro ' + r.status); e.status = r.status; throw e; }
+    return r.json();
+  }
+  // corpo: { context_uri } ou { context_uri, offset: { uri } } ou { uris: [...] }
+  async function spTocar(corpo, embaralhar) {
+    if (!spPlayer || !spDevice) { bibMsg.textContent = 'O player do Spotify ainda está ligando...'; return; }
+    spPlayer.activateElement();                     // libera o áudio no próprio clique
     var dev = 'device_id=' + encodeURIComponent(spDevice);
     try {
-      await spApi('play?' + dev, { context_uri: 'spotify:' + caminho.replace('/', ':') });
-      spApi('shuffle?state=true&' + dev).catch(function () {});   // ordem aleatória
-      spStatus('');
-    } catch (e) { spStatus('Não consegui tocar: ' + e.message, 'erro'); }
+      await spApi('shuffle?state=' + (embaralhar ? 'true' : 'false') + '&' + dev).catch(function () {});
+      await spApi('play?' + dev, corpo);
+    } catch (e) { bibMsg.textContent = 'Não consegui tocar: ' + e.message; }
+  }
+  function uri(caminho) { return 'spotify:' + caminho.replace('/', ':'); }
+
+  // ---- Biblioteca ----
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function linha(img, titulo, sub, aoClicar, selo) {
+    var li = el('li'), b = el('button', 'item'); b.type = 'button';
+    var capa;
+    if (img && /^https:\/\//.test(img)) { capa = el('img', 'capa'); capa.src = img; capa.alt = ''; capa.loading = 'lazy'; }
+    else capa = el('span', 'capa', (titulo || '?').charAt(0).toUpperCase());
+    var t = el('span', 't'); t.appendChild(el('strong', '', titulo)); if (sub) t.appendChild(el('span', '', sub));
+    b.appendChild(capa); b.appendChild(t); if (selo) b.appendChild(el('span', 'selo-livre', selo));
+    b.addEventListener('click', aoClicar); li.appendChild(b); bibLista.appendChild(li);
+  }
+  function secao(txt) { bibLista.appendChild(el('li', 'sec', txt)); }
+  function imagem(o) { var i = o && o.images; return i && i.length ? (i[i.length > 1 ? 1 : 0] || i[0]).url : null; }
+  function limparBib() { bibLista.textContent = ''; bibMsg.textContent = ''; }
+
+  function mostrarAba(aba) {
+    bibAba = aba; bibAberta = null;
+    document.querySelectorAll('.tocador .abas button').forEach(function (b) { b.setAttribute('aria-selected', b.dataset.aba === aba ? 'true' : 'false'); });
+    bibBusca.hidden = aba !== 'busca'; bibVoltar.hidden = true; limparBib();
+    if (aba === 'generos') {
+      GENEROS.forEach(function (g) {
+        linha(null, 'StreamBeats · ' + g[0], 'Toca em ordem aleatória', function () { spTocar({ context_uri: uri(g[1]) }, true); }, 'LIVRE P/ LIVE');
+      });
+    } else if (aba === 'minhas') mostrarMinhas();
+    else if (aba === 'busca') { if (bibQ.value.trim()) buscar(); else bibMsg.textContent = 'Digite o nome de uma música, artista ou playlist.'; bibQ.focus(); }
+  }
+  async function mostrarMinhas() {
+    if (!temEscopo('playlist-read-private')) {
+      bibMsg.textContent = 'Para ver suas playlists, o Spotify precisa de mais uma permissão.';
+      var b = el('button', '', 'Liberar minhas playlists'); b.type = 'button'; b.addEventListener('click', spConectar);
+      bibMsg.appendChild(el('br')); bibMsg.appendChild(b); return;
+    }
+    bibMsg.textContent = 'Carregando suas playlists...';
+    try {
+      if (!minhasCache) {
+        var url = 'me/playlists?limit=50', lista = [];
+        while (url && lista.length < 300) { var j = await spGet(url); lista = lista.concat((j.items || []).filter(Boolean)); url = j.next; }
+        minhasCache = lista;
+      }
+      if (bibAba !== 'minhas' || bibAberta) return;
+      limparBib();
+      if (!minhasCache.length) { bibMsg.textContent = 'Nenhuma playlist encontrada.'; return; }
+      minhasCache.forEach(function (p) {
+        var n = p.tracks && typeof p.tracks.total === 'number' ? p.tracks.total + ' músicas' : (p.owner && p.owner.display_name) || '';
+        linha(imagem(p), p.name, n, function () { abrirPlaylist(p); });
+      });
+    } catch (e) { bibMsg.textContent = 'Não consegui listar suas playlists (' + e.message + ').'; }
+  }
+  async function abrirPlaylist(p) {
+    bibAberta = p; limparBib(); bibBusca.hidden = true; bibVoltar.hidden = false; bibTitulo.textContent = p.name;
+    bibMsg.textContent = 'Carregando músicas...';
+    var ctx = 'spotify:playlist:' + p.id;
+    try {
+      var j;
+      try { j = await spGet('playlists/' + p.id + '/items?limit=100'); }
+      catch (e) { j = await spGet('playlists/' + p.id + '/tracks?limit=100'); }
+      if (bibAberta !== p) return;
+      limparBib();
+      var faixas = (j.items || []).map(function (it) { return it && (it.item || it.track); })
+        .filter(function (t) { return t && t.uri && t.type !== 'episode'; });
+      if (!faixas.length) bibMsg.textContent = 'Nenhuma música para mostrar. Use “Tocar” para tocar a playlist.';
+      faixas.forEach(function (t) {
+        linha(imagem(t.album), t.name, (t.artists || []).map(function (a) { return a.name; }).join(', ') + ' · ' + mmss(t.duration_ms),
+          function () { spTocar({ context_uri: ctx, offset: { uri: t.uri } }, false); });
+      });
+    } catch (e) {
+      if (bibAberta !== p) return;
+      bibMsg.textContent = 'O Spotify não deixou listar as músicas desta playlist. Use “Tocar” para tocar ela inteira.';
+    }
+  }
+  var tBusca = null, nBusca = 0;
+  async function buscar() {
+    var termo = bibQ.value.trim(), meu = ++nBusca;
+    if (!termo) { limparBib(); bibMsg.textContent = 'Digite o nome de uma música, artista ou playlist.'; return; }
+    bibMsg.textContent = 'Procurando...';
+    try {
+      var j = await spGet('search?' + new URLSearchParams({ q: termo, type: 'track,playlist', limit: 10 }));
+      if (meu !== nBusca || bibAba !== 'busca' || bibAberta) return;
+      limparBib();
+      var faixas = ((j.tracks && j.tracks.items) || []).filter(Boolean);
+      var listas = ((j.playlists && j.playlists.items) || []).filter(Boolean);
+      if (!faixas.length && !listas.length) { bibMsg.textContent = 'Nada encontrado.'; return; }
+      if (faixas.length) secao('Músicas');
+      faixas.forEach(function (t) {
+        linha(imagem(t.album), t.name, (t.artists || []).map(function (a) { return a.name; }).join(', ') + ' · ' + mmss(t.duration_ms),
+          function () { spTocar({ uris: [t.uri] }, false); });
+      });
+      if (listas.length) secao('Playlists');
+      listas.forEach(function (p) {
+        linha(imagem(p), p.name, (p.owner && p.owner.display_name) || 'Playlist', function () { abrirPlaylist(p); });
+      });
+      bibMsg.textContent = 'Fora da aba Gêneros, garanta que a música pode tocar em live.';
+    } catch (e) { if (meu === nBusca) bibMsg.textContent = 'A pesquisa falhou (' + e.message + ').'; }
   }
 
-  function tocarGenero(id, doClique) {
-    genero = id; gravar('genero', id);
-    generosBox.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', b.dataset.id === id ? 'true' : 'false'); });
-    campoMinha.hidden = id !== 'minha';
-    var g = GENEROS.filter(function (x) { return x[0] === id; })[0];
-    var caminho = g && (g[2] || spotifyCaminho(minhaPlaylist.value));
-    if (doClique && caminho) spTocar(caminho);
+  function abrirBib() {
+    bib.hidden = false; btnBib.setAttribute('aria-expanded', 'true');
+    if (!bibLista.children.length && !bibMsg.textContent) mostrarAba(bibAba);
+    var sel = bib.querySelector('.abas [aria-selected="true"]'); if (sel) sel.focus();
   }
+  function fecharBib() { bib.hidden = true; btnBib.setAttribute('aria-expanded', 'false'); }
 
   if (!document.body.classList.contains('obs')) {          // no OBS não roda nada de música
-    GENEROS.forEach(function (g) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.dataset.id = g[0]; b.textContent = g[1];
-      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
-      b.addEventListener('click', function () { tocarGenero(g[0], true); });
-      generosBox.appendChild(b);
-    });
-    minhaPlaylist.addEventListener('change', function () {
-      gravar('minha-playlist', minhaPlaylist.value.trim()); if (genero === 'minha') tocarGenero('minha', true);
-    });
-    document.getElementById('sp-btn-conectar').addEventListener('click', spConectar);
+    $('sp-btn-conectar').addEventListener('click', spConectar);
     spSair.addEventListener('click', function () { spDesconectar(); });
-    document.getElementById('sp-liberar').addEventListener('click', spConectar);   // pede a permissão nova
-    spMinhas.addEventListener('change', function () {
-      if (!spMinhas.value) return;
-      generosBox.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', 'false'); });
-      campoMinha.hidden = true; spTocar(spMinhas.value);
-    });
     spPlay.addEventListener('click', function () { if (spPlayer) { spPlayer.activateElement(); spPlayer.togglePlay(); } });
-    document.getElementById('sp-ant').addEventListener('click', function () { if (spPlayer) spPlayer.previousTrack(); });
-    document.getElementById('sp-prox').addEventListener('click', function () { if (spPlayer) spPlayer.nextTrack(); });
+    $('sp-ant').addEventListener('click', function () { if (spPlayer) spPlayer.previousTrack(); });
+    $('sp-prox').addEventListener('click', function () { if (spPlayer) spPlayer.nextTrack(); });
     spVolume.addEventListener('input', function () { gravar('sp-volume', spVolume.value); if (spPlayer) spPlayer.setVolume(parseFloat(spVolume.value)); });
-    if (genero) tocarGenero(genero, false);
+    spPos.addEventListener('input', function () { spArrastando = true; spTempo.textContent = mmss(spPos.value / 1000 * spDuracao); });
+    spPos.addEventListener('change', function () {
+      spArrastando = false;
+      if (spPlayer && spDuracao) { var ms = Math.round(spPos.value / 1000 * spDuracao); spPlayer.seek(ms); spPosicao = ms; spMarca = performance.now(); }
+    });
+    btnBib.addEventListener('click', function () { bib.hidden ? abrirBib() : fecharBib(); });
+    $('bib-fechar').addEventListener('click', function () { fecharBib(); btnBib.focus(); });
+    document.querySelectorAll('.tocador .abas button').forEach(function (b) { b.addEventListener('click', function () { mostrarAba(b.dataset.aba); }); });
+    $('bib-voltar-btn').addEventListener('click', function () { mostrarAba(bibAba); });
+    $('bib-tocar-tudo').addEventListener('click', function () { if (bibAberta) spTocar({ context_uri: 'spotify:playlist:' + bibAberta.id }, false); });
+    bibQ.addEventListener('input', function () { clearTimeout(tBusca); tBusca = setTimeout(buscar, 400); });
+    addEventListener('keydown', function (e) { if (e.key === 'Escape' && !bib.hidden) { fecharBib(); btnBib.focus(); } });
+    document.addEventListener('pointerdown', function (e) { if (!bib.hidden && !e.target.closest('.tocador')) fecharBib(); });
     spTela();
-    spRetorno().then(function () { spTela(); if (spToken) { spCarregarSdk(); spCarregarPlaylists(); } });
+    spRetorno().then(function () { spTela(); if (spToken) spCarregarSdk(); });
   }
 
   // ===== Chat do Casterlabs na lateral: só no navegador, nunca vai para o OBS =====
@@ -1375,9 +1549,13 @@
     var b = document.body.classList;
     var lateral = !b.contains('obs') && !b.contains('painel-fechado') && innerWidth > 760 ? 340 : 0;
     var esquerda = !b.contains('obs') && b.contains('chat-on') && innerWidth > 760 ? chatLargura() : 0;
-    var larg = Math.max(200, innerWidth - lateral - esquerda);
-    var s = Math.min(larg / pw, innerHeight / ph);
+    var barra = !b.contains('obs') && b.contains('sp-on') ? 76 : 0;     // player do Spotify embaixo
+    var larg = Math.max(200, innerWidth - lateral - esquerda), alt = Math.max(150, innerHeight - barra);
+    var s = Math.min(larg / pw, alt / ph);
     palco.style.left = (esquerda + larg / 2) + 'px';
+    palco.style.top = (alt / 2) + 'px';
+    document.body.style.setProperty('--esq', esquerda + 'px');
+    document.body.style.setProperty('--dir', lateral + 'px');
     palco.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
   }
   addEventListener('resize', ajustar); ajustar();
