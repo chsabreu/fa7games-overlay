@@ -397,7 +397,16 @@
   body.invertido.painel-fechado .painel { transform: translateX(-100%); }
   body.chat-on.invertido:not(.obs) .chat { left: auto; right: 0; border-right: 0; border-left: 1px solid rgba(0,221,246,.22); box-shadow: -12px 0 32px rgba(0,0,0,.35); }
   body.invertido:not(.obs).painel-fechado .aba { right: auto; left: 0; border-right: 1px solid rgba(0,221,246,.35); border-left: 0; border-radius: 0 6px 6px 0; }
-  .painel #btn-lados[aria-pressed="true"] { color: var(--ciano); border-color: rgba(0,221,246,.4); }
+  .lados { display: none; }
+  body:not(.obs) .lados {
+    display: block; position: fixed; z-index: 24; top: 16px;
+    left: calc(var(--esq, 0px) + (100vw - var(--esq, 0px) - var(--dir, 0px)) / 2); transform: translateX(-50%);
+    font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7ECF1; white-space: nowrap;
+    background: #0D1014; border: 1px solid rgba(0,221,246,.35); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  }
+  body:not(.obs) .lados:hover { color: var(--ciano); border-color: var(--ciano); }
+  body:not(.obs) .lados:focus-visible { outline: 2px solid var(--branco); outline-offset: 2px; }
+  body.luz:not(.obs) .lados { box-shadow: 0 2px 10px rgba(0,0,0,.25); }
 
   /* ===== Painel de luz: o fundo do site vira luz; logo, câmera e painel continuam; no OBS nada muda ===== */
   body:not(.obs) { transition: background-color .4s ease; }
@@ -455,6 +464,11 @@
   .tocador .abas button { padding: 7px 12px; border-radius: 999px; font-weight: 600; color: rgba(231,236,241,.65); }
   .tocador .abas button:hover { color: #fff; }
   .tocador .abas button[aria-selected="true"] { background: #1C2128; color: #fff; }
+  .tocador .abas button:disabled { opacity: .35; cursor: not-allowed; }
+  .tocador .seguro { margin-left: auto; padding: 6px 12px; border-radius: 999px; font-weight: 600; white-space: nowrap;
+    color: rgba(231,236,241,.6); border: 1px solid rgba(255,255,255,.16) !important; }
+  .tocador .seguro[aria-pressed="true"] { color: var(--ciano); border-color: rgba(0,221,246,.5) !important; background: rgba(0,221,246,.1); }
+  body.sp-seguro .tocador .biblio::after { content: " 🛡"; }
   .tocador .bib-busca { padding: 10px 12px 0; }
   .tocador .bib-busca input {
     width: 100%; font: inherit; color: #fff; background: #161A20;
@@ -498,7 +512,6 @@
     <header class="topo">
       <div class="titulo"><strong>fa7herTV</strong><span>Controle do overlay</span></div>
       <span class="salvo" id="salvo" role="status"></span>
-      <button class="icone" id="btn-lados" type="button" aria-pressed="false" aria-label="Inverter lados do painel e do chat" title="Inverter lados (painel e chat)">&#x21C4;</button>
       <button class="icone" id="btn-fechar" type="button" aria-label="Recolher painel" title="Recolher painel">&#x203A;</button>
     </header>
 
@@ -642,6 +655,7 @@
       <p class="nota" id="obs-cam" role="status"></p>
     </section>
   </aside>
+  <button class="lados" id="btn-lados" type="button" aria-pressed="false" title="Inverter lados (painel e chat)">&#x21C4; Inverter lados</button>
   <button class="aba" id="btn-abrir" type="button" aria-label="Abrir painel">&#x2039; Painel</button>
   <aside class="chat" id="chat" aria-label="Chat da live">
     <div class="chat-topo">
@@ -662,6 +676,7 @@
           <button type="button" role="tab" data-aba="minhas" aria-selected="false">Suas playlists</button>
           <button type="button" role="tab" data-aba="busca" aria-selected="false">Pesquisar</button>
         </div>
+        <button class="seguro" id="bib-seguro" type="button" aria-pressed="true" title="Só toca StreamBeats, liberada para lives">&#x1F6E1; Modo seguro</button>
         <button class="icone" id="bib-fechar" type="button" aria-label="Fechar biblioteca">&#x2715;</button>
       </div>
       <div class="bib-busca" id="bib-busca" hidden>
@@ -1608,6 +1623,10 @@
       var imgs = (t.album && t.album.images) || [], img = imgs[imgs.length - 1];
       if (img && /^https:\/\//.test(img.url)) spCapa.src = img.url;
     }
+    if (spSeguro && !st.paused && !ehSeguro(st.context && st.context.uri) && spPlayer) {
+      spPlayer.pause(); st.paused = true;
+      spArtista.textContent = 'Pausado pelo modo seguro: só StreamBeats';
+    }
     spPosicao = st.position || 0; spDuracao = st.duration || 0; spPausado = st.paused; spMarca = performance.now();
     if (t) {                                        // manda "tocando agora" para a live
       var capas = (t.album && t.album.images) || [], capa = capas[1] || capas[0];
@@ -1656,6 +1675,7 @@
   // corpo: { context_uri } ou { context_uri, offset: { uri } } ou { uris: [...] }
   async function spTocar(corpo, embaralhar) {
     if (!spPlayer || !spDevice) { bibMsg.textContent = 'O player do Spotify ainda está ligando...'; return; }
+    if (spSeguro && !ehSeguro(corpo.context_uri)) { bibMsg.textContent = 'Modo seguro ligado: só StreamBeats. Desligue para tocar outras músicas.'; return; }
     spPlayer.activateElement();                     // libera o áudio no próprio clique
     var dev = 'device_id=' + encodeURIComponent(spDevice);
     try {
@@ -1664,6 +1684,19 @@
     } catch (e) { bibMsg.textContent = 'Não consegui tocar: ' + e.message; }
   }
   function uri(caminho) { return 'spotify:' + caminho.replace('/', ':'); }
+
+  // ---- Modo seguro: só deixa tocar as playlists da StreamBeats (liberadas para live) ----
+  var spSeguro = ler('sp-seguro') !== '0';
+  function ehSeguro(ctx) { return !!ctx && GENEROS.some(function (g) { return uri(g[1]) === ctx; }); }
+  function modoSeguro(on) {
+    spSeguro = on; gravar('sp-seguro', on ? '1' : '0');
+    document.body.classList.toggle('sp-seguro', on);
+    $('bib-seguro').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('bib-seguro').innerHTML = '&#x1F6E1; Modo seguro ' + (on ? 'ligado' : 'desligado');
+    document.querySelectorAll('.tocador .abas button').forEach(function (b) { b.disabled = on && b.dataset.aba !== 'generos'; });
+    if (on && bibAba !== 'generos') mostrarAba('generos');
+    else if (!bib.hidden) mostrarAba(bibAba);
+  }
 
   // ---- Biblioteca ----
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -1756,7 +1789,7 @@
       listas.forEach(function (p) {
         linha(imagem(p), p.name, (p.owner && p.owner.display_name) || 'Playlist', function () { abrirPlaylist(p); });
       });
-      bibMsg.textContent = 'Fora da aba Gêneros, garanta que a música pode tocar em live.';
+      bibMsg.textContent = 'Fora da aba Gêneros, a música pode dar problema de direitos autorais na live.';
     } catch (e) { if (meu === nBusca) bibMsg.textContent = 'A pesquisa falhou (' + e.message + ').'; }
   }
 
@@ -1788,6 +1821,8 @@
       if (spPlayer && spDuracao) { var ms = Math.round(spPos.value / 1000 * spDuracao); spPlayer.seek(ms); spPosicao = ms; spMarca = performance.now(); }
     });
     btnBib.addEventListener('click', function () { bib.hidden ? abrirBib() : fecharBib(); });
+    $('bib-seguro').addEventListener('click', function () { modoSeguro(!spSeguro); });
+    modoSeguro(spSeguro);
     $('bib-fechar').addEventListener('click', function () { fecharBib(); btnBib.focus(); });
     document.querySelectorAll('.tocador .abas button').forEach(function (b) { b.addEventListener('click', function () { mostrarAba(b.dataset.aba); }); });
     $('bib-voltar-btn').addEventListener('click', function () { mostrarAba(bibAba); });
