@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>fa7herTV overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
 <style>
   /* ===== Ajustes rápidos ===== */
   :root {
@@ -131,7 +134,15 @@
     font: 14px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #E7ECF1;
   }
   .chat .chat-topo strong { font: italic 700 17px/1 "Bahnschrift", "Arial Narrow", sans-serif; letter-spacing: .04em; color: var(--ciano); }
-  .chat .chat-status { font-size: 12px; color: rgba(231,236,241,.5); }
+  .chat .chat-status { font-size: 12px; color: rgba(231,236,241,.5); margin-right: auto; }
+  .chat .chat-botao {
+    font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; white-space: nowrap;
+    color: #E7ECF1; background: #161A20; border: 1px solid rgba(255,255,255,.16); border-radius: 999px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  .chat .chat-botao:hover { border-color: rgba(255,255,255,.32); }
+  .chat .chat-botao:focus-visible { outline: 2px solid var(--branco); outline-offset: 2px; }
+  .chat .chat-botao[aria-pressed="true"] { background: rgba(255,90,90,.16); border-color: #ff5a5a; color: #ffb3b3; }
   .chat .chat-status.on { color: var(--ciano); }
   .chat .chat-status.erro { color: #ff8a8a; }
   .chat-lista {
@@ -218,10 +229,26 @@
   .painel button.alternar[aria-pressed="true"] { background: rgba(255,90,90,.14); border-color: #ff5a5a; }
   .painel button.alternar[aria-pressed="true"] .alternar-estado { color: #ff8a8a; }
 
-  /* ===== Modo fumando: câmera, moldura e faixa somem da live ===== */
+  /* ===== Escurecer câmera: a moldura fica, a imagem vira uma tela de "volto já" ===== */
+  .cam .descanso {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; text-align: center;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,221,246,.035) 0 1px, transparent 1px 4px),
+      radial-gradient(120% 90% at 50% 40%, #131a21 0%, #07090c 75%);
+    color: #EAFBFE; opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility .5s;
+    font-family: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif;
+  }
+  .cam .descanso small {
+    font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: var(--ciano);
+    text-shadow: 0 0 8px rgba(0,221,246,.6);
+  }
+  .cam .descanso span {
+    font-size: 19px; font-weight: 600; line-height: 1.12; text-wrap: balance;
+    text-shadow: 0 1px 0 #000, 0 0 12px rgba(0,221,246,.25);
+  }
+  body.escuro .cam .descanso { opacity: 1; visibility: visible; }
   .cam { transition: opacity .5s ease, visibility .5s; }
-  body.fumando .cam { opacity: 0; visibility: hidden; }
-  body.fumando:not(.obs) .cam { opacity: .18; visibility: visible; }
 
   body:not(.obs).painel-fechado .aba {
     display: block; position: fixed; z-index: 30; top: 16px; right: 0;
@@ -269,10 +296,10 @@
           </select>
         </div>
       </div>
-      <button id="btn-fumando" class="alternar" type="button" aria-pressed="false">
-        <span class="alternar-texto">Modo fumando</span><span class="alternar-estado">desligado</span>
+      <button id="btn-escuro" class="alternar" type="button" aria-pressed="false">
+        <span class="alternar-texto">Escurecer câmera</span><span class="alternar-estado">desligado</span>
       </button>
-      <p class="nota">Esconde a câmera e a moldura na live enquanto estiver ligado.</p>
+      <p class="nota">A moldura continua; no lugar da imagem aparece uma frase aleatória. Também tem atalho no topo do chat.</p>
     </section>
 
     <section class="secao" aria-labelledby="t-webcam">
@@ -340,7 +367,10 @@
   </aside>
   <button class="aba" id="btn-abrir" type="button" aria-label="Abrir painel">&#x2039; Painel</button>
   <aside class="chat" id="chat" aria-label="Chat da live">
-    <div class="chat-topo"><strong>Chat</strong><span class="chat-status" id="chat-status" role="status"></span></div>
+    <div class="chat-topo">
+      <strong>Chat</strong><span class="chat-status" id="chat-status" role="status"></span>
+      <button class="chat-botao" id="btn-escuro-chat" type="button" aria-pressed="false">Escurecer câmera</button>
+    </div>
     <ol class="chat-lista" id="chat-lista" aria-live="polite"></ol>
     <!-- só para links que não são do Casterlabs -->
     <iframe id="chat-frame" title="Chat da live" referrerpolicy="no-referrer"
@@ -360,6 +390,7 @@
       <video id="video" autoplay muted playsinline></video>
       <canvas id="tela" width="960" height="540"></canvas>
       <div class="previa" id="cam-msg">sua câmera</div>
+      <div class="descanso" aria-live="polite"><small>volto já</small><span id="descanso-frase"></span></div>
       <svg class="moldura" viewBox="0 0 288 162" aria-hidden="true">
         <defs>
           <linearGradient id="metal" x1="0" y1="-10" x2="0" y2="172" gradientUnits="userSpaceOnUse">
@@ -691,7 +722,7 @@
     if (!ws || !ws.pronto) return;
     var dados = extra && extra.pedido
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
-      : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, fumando: fumando };
+      : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, escuro: escuro, frase: frase };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
   function enviarDiag() {
@@ -717,7 +748,7 @@
       faixa.textContent = e.jogo; campoJogo.value = e.jogo; gravar('jogo', e.jogo);
     }
     if (e.cam) { campoCam.value = e.cam; aplicarCam(e.cam); gravar('cam', e.cam); }
-    if (typeof e.fumando === 'boolean') aplicarFumando(e.fumando);
+    if (typeof e.escuro === 'boolean') aplicarEscuro(e.escuro, e.frase);
     if (e.fx && typeof e.fx === 'object') {
       for (var k in FX_PADRAO) if (typeof e.fx[k] === 'number') fx[k] = e.fx[k];
       gravar('fx', JSON.stringify(fx)); mostrarFx();
@@ -836,17 +867,49 @@
   listarCameras(); ligarCamera();
   conectar();
 
-  // ===== Modo fumando: esconde câmera e moldura na live (vai para o OBS) =====
-  var btnFumando = document.getElementById('btn-fumando');
-  var fumando = false;
-  function aplicarFumando(on) {
-    fumando = !!on; gravar('fumando', fumando ? '1' : '0');
-    document.body.classList.toggle('fumando', fumando);
-    btnFumando.setAttribute('aria-pressed', fumando ? 'true' : 'false');
-    btnFumando.querySelector('.alternar-estado').textContent = fumando ? 'ligado' : 'desligado';
+  // ===== Escurecer câmera: moldura fica, imagem vira frase aleatória (vai para o OBS) =====
+  var FRASES = [
+    'A câmera foi descansar. Já volta!',
+    'Respawn em instantes...',
+    'Carregando streamer... 99%',
+    'Pausa técnica: recarregando o streamer.',
+    'AFK rapidinho. Não morre aí, chat!',
+    'O streamer foi buscar loot. Volta já.',
+    'Câmera em modo zumbi. Aguarde.',
+    'Salvando o jogo... não desligue.',
+    'Segura a live aí, chat!',
+    'Intervalo comercial (sem comerciais).',
+    'A câmera saiu pra tomar um ar.',
+    'Volto antes do próximo save.',
+    'Streamer em manutenção preventiva.',
+    'Fui ali e já volto. Comportem-se!'
+  ];
+  var btnEscuro = document.getElementById('btn-escuro'), btnEscuroChat = document.getElementById('btn-escuro-chat');
+  var descansoFrase = document.getElementById('descanso-frase');
+  var escuro = false, frase = 0;
+  function aplicarEscuro(on, idx) {
+    escuro = !!on;
+    if (typeof idx === 'number' && idx >= 0) frase = idx % FRASES.length;
+    gravar('escuro', escuro ? '1' : '0'); gravar('frase', String(frase));
+    document.body.classList.toggle('escuro', escuro);
+    descansoFrase.textContent = FRASES[frase];
+    btnEscuro.setAttribute('aria-pressed', escuro ? 'true' : 'false');
+    btnEscuro.querySelector('.alternar-estado').textContent = escuro ? 'ligado' : 'desligado';
+    btnEscuroChat.setAttribute('aria-pressed', escuro ? 'true' : 'false');
+    btnEscuroChat.textContent = escuro ? 'Mostrar câmera' : 'Escurecer câmera';
   }
-  aplicarFumando(q.has('fumando') ? q.get('fumando') === '1' : ler('fumando') === '1');
-  btnFumando.addEventListener('click', function () { aplicarFumando(!fumando); avisar(true); enviar(); });
+  function sortear() {
+    var n; do { n = Math.floor(Math.random() * FRASES.length); } while (n === frase && FRASES.length > 1);
+    return n;
+  }
+  function alternarEscuro() { aplicarEscuro(!escuro, !escuro ? sortear() : frase); avisar(true); enviar(); }
+  btnEscuro.addEventListener('click', alternarEscuro);
+  btnEscuroChat.addEventListener('click', alternarEscuro);
+  aplicarEscuro(q.has('escuro') ? q.get('escuro') === '1' : ler('escuro') === '1', parseInt(ler('frase'), 10) || 0);
+  // Enquanto estiver escuro, o site troca a frase a cada 25 s (o OBS só segue)
+  setInterval(function () {
+    if (escuro && !document.body.classList.contains('obs')) { aplicarEscuro(true, sortear()); enviar(); }
+  }, 25000);
 
   // ===== Painel de luz: só no navegador =====
   var luzTom = document.getElementById('luz-tom'), luzForca = document.getElementById('luz-forca');
