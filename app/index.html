@@ -390,7 +390,7 @@
       <video id="video" autoplay muted playsinline></video>
       <canvas id="tela" width="960" height="540"></canvas>
       <div class="previa" id="cam-msg">sua câmera</div>
-      <div class="descanso" aria-live="polite"><small>volto já</small><span id="descanso-frase"></span></div>
+      <div class="descanso" aria-live="polite"><small>câmera off</small><span id="descanso-frase"></span></div>
       <svg class="moldura" viewBox="0 0 288 162" aria-hidden="true">
         <defs>
           <linearGradient id="metal" x1="0" y1="-10" x2="0" y2="172" gradientUnits="userSpaceOnUse">
@@ -869,20 +869,20 @@
 
   // ===== Escurecer câmera: moldura fica, imagem vira frase aleatória (vai para o OBS) =====
   var FRASES = [
-    'A câmera foi descansar. Já volta!',
-    'Respawn em instantes...',
-    'Carregando streamer... 99%',
-    'Pausa técnica: recarregando o streamer.',
-    'AFK rapidinho. Não morre aí, chat!',
-    'O streamer foi buscar loot. Volta já.',
-    'Câmera em modo zumbi. Aguarde.',
-    'Salvando o jogo... não desligue.',
-    'Segura a live aí, chat!',
-    'Intervalo comercial (sem comerciais).',
-    'A câmera saiu pra tomar um ar.',
-    'Volto antes do próximo save.',
-    'Streamer em manutenção preventiva.',
-    'Fui ali e já volto. Comportem-se!'
+    'Câmera em manutenção.',
+    'A câmera tá descansando.',
+    'Câmera tirando um cochilo.',
+    'A câmera foi recarregar as baterias.',
+    'Câmera em pausa pro café.',
+    'A câmera pediu uma folguinha.',
+    'Câmera em modo soneca.',
+    'A câmera ficou tímida.',
+    'Câmera fazendo alongamento.',
+    'A câmera tá se arrumando.',
+    'Câmera em horário de almoço.',
+    'Câmera em modo economia.',
+    'A câmera saiu do ar. O streamer não!',
+    'Câmera em manutenção preventiva.'
   ];
   var btnEscuro = document.getElementById('btn-escuro'), btnEscuroChat = document.getElementById('btn-escuro-chat');
   var descansoFrase = document.getElementById('descanso-frase');
