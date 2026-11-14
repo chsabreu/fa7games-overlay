@@ -136,6 +136,16 @@
   .painel .botao-link:hover { filter: brightness(1.08); }
   .painel .botao-link:focus-visible { outline: 2px solid var(--branco); outline-offset: 2px; }
   .painel .player:empty { display: none; }
+  .painel code { font-size: 11px; color: var(--ciano); overflow-wrap: anywhere; }
+  .painel .sp-conectar { display: flex; flex-direction: column; gap: 10px; }
+  .painel .tocando { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; background: #161A20; border: 1px solid rgba(255,255,255,.08); }
+  .painel .tocando img { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; background: #0D1014; flex: none; }
+  .painel .faixa-info { display: flex; flex-direction: column; min-width: 0; }
+  .painel .faixa-info strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .painel .faixa-info span { font-size: 12px; color: rgba(231,236,241,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .painel .controles { display: flex; align-items: center; gap: 8px; }
+  .painel .controles .play { width: 40px; height: 40px; padding: 0; border-radius: 50%; font-size: 15px; }
+  .painel .controles input[type=range] { flex: 1; accent-color: var(--ciano); }
   .painel .player iframe { display: block; width: 100%; border: 0; border-radius: 12px; }
   /* ===== Chat na lateral esquerda (só no site) ===== */
   body.chat-on:not(.obs) .chat {
@@ -358,18 +368,35 @@
     <section class="secao" aria-labelledby="t-musica">
       <h2 id="t-musica">Música</h2>
       <p class="nota">Playlists da StreamBeats: livres para lives na Twitch, Kick e YouTube, sem precisar dar crédito. Toca aqui no site e entra na live pelo áudio do desktop do OBS.</p>
+
+      <div class="sp-conectar" id="sp-conectar">
+        <div class="campo">
+          <label for="sp-client">Client ID do seu app no Spotify</label>
+          <input id="sp-client" type="text" autocomplete="off" spellcheck="false" placeholder="32 letras e números">
+        </div>
+        <button id="sp-btn-conectar" type="button">Conectar Spotify</button>
+        <p class="nota">Precisa de Spotify Premium. Crie um app grátis em developer.spotify.com com o Redirect URI <code>https://fa7games-overlay.vercel.app/</code>.</p>
+      </div>
+
+      <div class="tocando" id="sp-tocando" hidden>
+        <img id="sp-capa" alt="" width="56" height="56">
+        <div class="faixa-info"><strong id="sp-musica">—</strong><span id="sp-artista"></span></div>
+      </div>
+      <div class="controles" id="sp-controles" hidden>
+        <button class="icone" id="sp-ant" type="button" aria-label="Música anterior">&#x23EE;</button>
+        <button class="play" id="sp-play" type="button" aria-label="Tocar">&#x25B6;</button>
+        <button class="icone" id="sp-prox" type="button" aria-label="Próxima música">&#x23ED;</button>
+        <input id="sp-volume" type="range" min="0" max="1" step="0.05" aria-label="Volume">
+      </div>
+
       <div class="generos" id="generos" role="radiogroup" aria-label="Gênero"></div>
       <div class="campo" id="campo-minha" hidden>
-        <label for="minha-playlist">Link de playlist do Spotify</label>
+        <label for="minha-playlist">Link de playlist ou álbum do Spotify</label>
         <input id="minha-playlist" type="text" autocomplete="off" spellcheck="false" placeholder="https://open.spotify.com/playlist/...">
         <p class="nota">Por sua conta: só use músicas que você tem certeza que podem tocar em live.</p>
       </div>
-      <div class="player" id="player"></div>
-      <div class="linha-acoes" id="musica-acoes" hidden>
-        <a class="botao-link" id="abrir-web" href="#" target="_blank" rel="noopener">Tocar inteira no Spotify</a>
-        <a class="botao-link leve" id="abrir-app" href="#">Abrir no app</a>
-      </div>
-      <p class="nota">Tocando só prévias de 30 s? O player daqui não está vendo seu login do Spotify. “Tocar inteira no Spotify” abre a playlist numa aba do Spotify, onde toca completa — e o som também entra na live.</p>
+      <p class="nota" id="sp-status" role="status"></p>
+      <button class="leve" id="sp-sair" type="button" hidden>Desconectar Spotify</button>
     </section>
 
     <section class="secao" aria-labelledby="t-chat">
@@ -970,7 +997,8 @@
   btnLuz.addEventListener('click', function () { luz(!document.body.classList.contains('luz')); });
   corLuz(); mostrarValores();
 
-  // ===== Música: playlists da StreamBeats (livres para live) no player do Spotify; só no site =====
+  // ===== Música: Spotify conectado (o site vira um aparelho do Spotify); só no site =====
+  // Login com PKCE (sem senha nem segredo no código). Os tokens ficam só neste navegador.
   var GENEROS = [
     ['lofi', 'Lo-fi', 'playlist/4kAqBBEZQsBIXMIJl6u8tO'],
     ['hiphop', 'Hip-hop', 'playlist/4X52HPxkyj1MQRV4UulYns'],
@@ -983,47 +1011,167 @@
     ['rock', 'Rock', 'playlist/3DBZowKNagHlV5ME32tPvF'],
     ['minha', 'Minha playlist', null]
   ];
-  var generosBox = document.getElementById('generos'), player = document.getElementById('player');
+  var SP_ESCOPOS = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state';
+  var spRedirect = location.origin + '/';
+  var generosBox = document.getElementById('generos');
   var campoMinha = document.getElementById('campo-minha'), minhaPlaylist = document.getElementById('minha-playlist');
+  var spClient = document.getElementById('sp-client'), spStatusEl = document.getElementById('sp-status');
+  var spConectarBox = document.getElementById('sp-conectar'), spSair = document.getElementById('sp-sair');
+  var spTocandoBox = document.getElementById('sp-tocando'), spControles = document.getElementById('sp-controles');
+  var spCapa = document.getElementById('sp-capa'), spMusica = document.getElementById('sp-musica'), spArtista = document.getElementById('sp-artista');
+  var spPlay = document.getElementById('sp-play'), spVolume = document.getElementById('sp-volume');
   var genero = ler('genero') || '';
+  var spToken = null; try { spToken = JSON.parse(ler('sp-token') || 'null'); } catch (e) {}
+  var spPlayer = null, spDevice = null, spSdkPedido = false;
   minhaPlaylist.value = ler('minha-playlist') || '';
+  spClient.value = ler('sp-client') || '';
+  spVolume.value = ler('sp-volume') || 0.5;
+
+  function spStatus(t, tipo) { spStatusEl.textContent = t || ''; spStatusEl.style.color = tipo === 'erro' ? '#ff8a8a' : tipo === 'on' ? 'var(--ciano)' : ''; }
+  function spTela() {
+    var logado = !!spToken;
+    spConectarBox.hidden = logado; spSair.hidden = !logado; spControles.hidden = !spDevice;
+  }
+  function b64url(buf) {
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function aleatorio(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a).slice(0, n); }
   function spotifyCaminho(u) {
     var m = /open\.spotify\.com\/(?:intl-[a-z-]+\/)?(playlist|album)\/([A-Za-z0-9]{10,40})/.exec(u || '');
     return m ? m[1] + '/' + m[2] : null;
   }
-  function tocarGenero(id) {
+
+  async function spConectar() {
+    var id = spClient.value.trim();
+    if (!/^[0-9a-f]{32}$/i.test(id)) { spStatus('Cole o Client ID do seu app (32 letras e números).', 'erro'); return; }
+    gravar('sp-client', id);
+    var verificador = aleatorio(64), estado = aleatorio(16);
+    gravar('sp-verifier', verificador); gravar('sp-state', estado);
+    var desafio = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verificador)));
+    location.href = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({
+      client_id: id, response_type: 'code', redirect_uri: spRedirect, scope: SP_ESCOPOS,
+      code_challenge_method: 'S256', code_challenge: desafio, state: estado
+    });
+  }
+  async function spPedirToken(params) {
+    var r = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params)
+    });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok) throw new Error(j.error_description || j.error || ('erro ' + r.status));
+    spToken = { access: j.access_token, refresh: j.refresh_token || (spToken && spToken.refresh), expira: Date.now() + (j.expires_in - 60) * 1000 };
+    gravar('sp-token', JSON.stringify(spToken));
+    return spToken.access;
+  }
+  async function spAcesso() {
+    if (!spToken) throw new Error('sem login');
+    if (Date.now() < spToken.expira) return spToken.access;
+    return spPedirToken({ grant_type: 'refresh_token', refresh_token: spToken.refresh, client_id: ler('sp-client') });
+  }
+  // Volta do login do Spotify: troca o código por token e limpa a barra de endereço
+  async function spRetorno() {
+    var code = q.get('code'), erro = q.get('error');
+    if (!code && !erro) return;
+    var limpo = new URLSearchParams(location.search);
+    ['code', 'state', 'error'].forEach(function (k) { limpo.delete(k); });
+    history.replaceState(null, '', location.pathname + (limpo.toString() ? '?' + limpo : '') + location.hash);
+    if (erro) { spStatus('Login no Spotify cancelado.', 'erro'); return; }
+    if (q.get('state') !== ler('sp-state')) { spStatus('Login do Spotify não confere. Tente conectar de novo.', 'erro'); return; }
+    try {
+      await spPedirToken({ grant_type: 'authorization_code', code: code, redirect_uri: spRedirect,
+        client_id: ler('sp-client'), code_verifier: ler('sp-verifier') });
+      spStatus('Spotify conectado!', 'on');
+    } catch (e) { spStatus('Não consegui conectar: ' + e.message, 'erro'); }
+    gravar('sp-verifier', ''); gravar('sp-state', '');
+  }
+  function spDesconectar(msg) {
+    spToken = null; spDevice = null; gravar('sp-token', '');
+    if (spPlayer) { try { spPlayer.disconnect(); } catch (e) {} }
+    spTocandoBox.hidden = true; spTela(); spStatus(msg || 'Spotify desconectado.');
+  }
+
+  function spCarregarSdk() {
+    if (spSdkPedido) return; spSdkPedido = true;
+    spStatus('Ligando o player do Spotify...');
+    window.onSpotifyWebPlaybackSDKReady = function () {
+      spPlayer = new Spotify.Player({
+        name: 'fa7herTV overlay', volume: parseFloat(spVolume.value) || 0.5,
+        getOAuthToken: function (cb) {
+          spAcesso().then(cb).catch(function () { spDesconectar('Sessão do Spotify expirou. Conecte de novo.'); });
+        }
+      });
+      spPlayer.addListener('ready', function (d) { spDevice = d.device_id; spTela(); spStatus('Pronto! Escolha um gênero.', 'on'); });
+      spPlayer.addListener('not_ready', function () { spDevice = null; spTela(); spStatus('Spotify caiu, reconectando...', 'erro'); });
+      spPlayer.addListener('initialization_error', function () { spStatus('Este navegador não conseguiu iniciar o Spotify.', 'erro'); });
+      spPlayer.addListener('authentication_error', function () { spDesconectar('Login do Spotify expirou. Conecte de novo.'); });
+      spPlayer.addListener('account_error', function () { spStatus('O Spotify só toca aqui com conta Premium.', 'erro'); });
+      spPlayer.addListener('playback_error', function (e) { spStatus('Erro ao tocar: ' + e.message, 'erro'); });
+      spPlayer.addListener('player_state_changed', spEstado);
+      spPlayer.connect();
+    };
+    var s = document.createElement('script'); s.src = 'https://sdk.scdn.co/spotify-player.js'; document.head.appendChild(s);
+  }
+  function spEstado(st) {
+    if (!st) return;
+    var t = st.track_window && st.track_window.current_track;
+    if (t) {
+      spMusica.textContent = t.name;
+      spArtista.textContent = (t.artists || []).map(function (a) { return a.name; }).join(', ');
+      var imgs = (t.album && t.album.images) || [], img = imgs[imgs.length - 1];
+      if (img && /^https:\/\//.test(img.url)) spCapa.src = img.url;
+      spTocandoBox.hidden = false;
+    }
+    spPlay.innerHTML = st.paused ? '&#x25B6;' : '&#x23F8;';
+    spPlay.setAttribute('aria-label', st.paused ? 'Tocar' : 'Pausar');
+  }
+  async function spApi(caminho, corpo) {
+    var tk = await spAcesso();
+    var r = await fetch('https://api.spotify.com/v1/me/player/' + caminho, {
+      method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+      body: corpo ? JSON.stringify(corpo) : undefined
+    });
+    if (!r.ok) { var j = await r.json().catch(function () { return {}; }); throw new Error((j.error && j.error.message) || ('erro ' + r.status)); }
+  }
+  async function spTocar(caminho) {
+    if (!spPlayer || !spDevice) { spStatus(spToken ? 'O player do Spotify ainda está ligando...' : 'Conecte o Spotify primeiro.', 'erro'); return; }
+    spPlayer.activateElement();                      // libera o áudio no próprio clique
+    var dev = 'device_id=' + encodeURIComponent(spDevice);
+    try {
+      await spApi('play?' + dev, { context_uri: 'spotify:' + caminho.replace('/', ':') });
+      spApi('shuffle?state=true&' + dev).catch(function () {});   // ordem aleatória
+      spStatus('');
+    } catch (e) { spStatus('Não consegui tocar: ' + e.message, 'erro'); }
+  }
+
+  function tocarGenero(id, doClique) {
     genero = id; gravar('genero', id);
     generosBox.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', b.dataset.id === id ? 'true' : 'false'); });
     campoMinha.hidden = id !== 'minha';
     var g = GENEROS.filter(function (x) { return x[0] === id; })[0];
     var caminho = g && (g[2] || spotifyCaminho(minhaPlaylist.value));
-    var acoes = document.getElementById('musica-acoes');
-    acoes.hidden = !caminho;
-    if (!caminho) { player.textContent = ''; return; }
-    // fallback: o app do Spotify toca as faixas inteiras (o player embutido pode ficar só nas prévias)
-    document.getElementById('abrir-app').href = 'spotify:' + caminho.replace('/', ':');
-    document.getElementById('abrir-web').href = 'https://open.spotify.com/' + caminho;
-    var src = 'https://open.spotify.com/embed/' + caminho + '?theme=0';
-    var f = player.querySelector('iframe');
-    if (f && f.src === src) return;
-    player.textContent = '';
-    f = document.createElement('iframe');
-    f.src = src; f.height = 152; f.title = 'Player de música (' + g[1] + ')';
-    f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-    player.appendChild(f);
+    if (doClique && caminho) spTocar(caminho);
   }
-  if (!document.body.classList.contains('obs')) {          // no OBS não carrega player nenhum
+
+  if (!document.body.classList.contains('obs')) {          // no OBS não roda nada de música
     GENEROS.forEach(function (g) {
       var b = document.createElement('button');
       b.type = 'button'; b.dataset.id = g[0]; b.textContent = g[1];
       b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
-      b.addEventListener('click', function () { tocarGenero(g[0]); });
+      b.addEventListener('click', function () { tocarGenero(g[0], true); });
       generosBox.appendChild(b);
     });
     minhaPlaylist.addEventListener('change', function () {
-      gravar('minha-playlist', minhaPlaylist.value.trim()); if (genero === 'minha') tocarGenero('minha');
+      gravar('minha-playlist', minhaPlaylist.value.trim()); if (genero === 'minha') tocarGenero('minha', true);
     });
-    if (genero) tocarGenero(genero);
+    document.getElementById('sp-btn-conectar').addEventListener('click', spConectar);
+    spSair.addEventListener('click', function () { spDesconectar(); });
+    spPlay.addEventListener('click', function () { if (spPlayer) { spPlayer.activateElement(); spPlayer.togglePlay(); } });
+    document.getElementById('sp-ant').addEventListener('click', function () { if (spPlayer) spPlayer.previousTrack(); });
+    document.getElementById('sp-prox').addEventListener('click', function () { if (spPlayer) spPlayer.nextTrack(); });
+    spVolume.addEventListener('input', function () { gravar('sp-volume', spVolume.value); if (spPlayer) spPlayer.setVolume(parseFloat(spVolume.value)); });
+    if (genero) tocarGenero(genero, false);
+    spTela();
+    spRetorno().then(function () { spTela(); if (spToken) spCarregarSdk(); });
   }
 
   // ===== Chat do Casterlabs na lateral: só no navegador, nunca vai para o OBS =====
