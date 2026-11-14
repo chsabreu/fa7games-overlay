@@ -284,7 +284,7 @@
 
     <section class="secao" aria-labelledby="t-chat">
       <h2 id="t-chat">Chat (só para você)</h2>
-      <p class="nota">No Casterlabs, crie um widget de Chat e copie o link dele. Cole aqui: o chat aparece na lateral do site, nunca no OBS. O link fica salvo só neste navegador.</p>
+      <p class="nota">No Casterlabs, crie um widget de Chat e copie o link dele. Cole aqui: o chat aparece na lateral do site, nunca no OBS. O link fica salvo só neste navegador. Se o Chrome pedir para acessar "dispositivos na rede local", permita.</p>
       <div class="campo">
         <label for="chat-link">Link do widget de chat</label>
         <input id="chat-link" type="password" autocomplete="off" spellcheck="false" placeholder="https://widgets.casterlabs.co/...">
@@ -312,7 +312,9 @@
   </aside>
   <button class="aba" id="btn-abrir" type="button" aria-label="Abrir painel">&#x2039; Painel</button>
   <aside class="chat" id="chat" aria-label="Chat da live">
-    <iframe id="chat-frame" title="Chat da live" referrerpolicy="no-referrer"></iframe>
+    <!-- o widget do Casterlabs conversa com o Caffeinated no seu PC; o Chrome exige liberar isso para frames -->
+    <iframe id="chat-frame" title="Chat da live" referrerpolicy="no-referrer"
+      allow="local-network-access; local-network; loopback-network; autoplay"></iframe>
   </aside>
 
   <div id="palco">
