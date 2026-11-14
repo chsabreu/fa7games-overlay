@@ -392,6 +392,13 @@
     border-radius: 6px 0 0 6px; padding: 9px 14px; cursor: pointer;
   }
 
+  /* ===== Lados invertidos: painel na esquerda, chat na direita (só no site) ===== */
+  body.invertido .painel { right: auto; left: 0; border-left: 0; border-right: 1px solid rgba(0,221,246,.22); box-shadow: 12px 0 32px rgba(0,0,0,.45); }
+  body.invertido.painel-fechado .painel { transform: translateX(-100%); }
+  body.chat-on.invertido:not(.obs) .chat { left: auto; right: 0; border-right: 0; border-left: 1px solid rgba(0,221,246,.22); box-shadow: -12px 0 32px rgba(0,0,0,.35); }
+  body.invertido:not(.obs).painel-fechado .aba { right: auto; left: 0; border-right: 1px solid rgba(0,221,246,.35); border-left: 0; border-radius: 0 6px 6px 0; }
+  .painel #btn-lados[aria-pressed="true"] { color: var(--ciano); border-color: rgba(0,221,246,.4); }
+
   /* ===== Painel de luz: o fundo do site vira luz; logo, câmera e painel continuam; no OBS nada muda ===== */
   body:not(.obs) { transition: background-color .4s ease; }
   body.luz:not(.obs) { background: var(--luz-cor, #fff); }
@@ -491,6 +498,7 @@
     <header class="topo">
       <div class="titulo"><strong>fa7herTV</strong><span>Controle do overlay</span></div>
       <span class="salvo" id="salvo" role="status"></span>
+      <button class="icone" id="btn-lados" type="button" aria-pressed="false" aria-label="Inverter lados do painel e do chat" title="Inverter lados (painel e chat)">&#x21C4;</button>
       <button class="icone" id="btn-fechar" type="button" aria-label="Recolher painel" title="Recolher painel">&#x203A;</button>
     </header>
 
@@ -2030,6 +2038,17 @@
   });
   if (ler('painel') === 'fechado') document.body.classList.add('painel-fechado');
 
+  // ===== Inverter lados: painel na esquerda e chat na direita (ou o contrário) =====
+  var btnLados = document.getElementById('btn-lados');
+  function lados(inv) {
+    document.body.classList.toggle('invertido', inv); gravar('lados', inv ? 'invertido' : 'normal');
+    btnLados.setAttribute('aria-pressed', inv ? 'true' : 'false');
+    document.getElementById('btn-fechar').innerHTML = inv ? '&#x2039;' : '&#x203A;';
+    document.getElementById('btn-abrir').innerHTML = inv ? 'Painel &#x203A;' : '&#x2039; Painel';
+    ajustar();
+  }
+  btnLados.addEventListener('click', function () { lados(!document.body.classList.contains('invertido')); });
+
   // Horizontal (1920x1080) ou vertical (1080x1920): no OBS decide pelo formato da fonte;
   // no navegador dá para ver a prévia vertical pelo painel. ?layout=vertical força.
   var palco = document.getElementById('palco');
@@ -2045,7 +2064,9 @@
     // No navegador, a prévia usa o espaço que sobra ao lado do painel
     var b = document.body.classList;
     var lateral = !b.contains('obs') && !b.contains('painel-fechado') && innerWidth > 760 ? 340 : 0;
-    var esquerda = !b.contains('obs') && b.contains('chat-on') && innerWidth > 760 ? chatLargura() : 0;
+    var chatL = !b.contains('obs') && b.contains('chat-on') && innerWidth > 760 ? chatLargura() : 0;
+    var inv = b.contains('invertido');
+    var esquerda = inv ? lateral : chatL; lateral = inv ? chatL : lateral;
     var barra = !b.contains('obs') && b.contains('sp-on') ? 76 : 0;     // player do Spotify embaixo
     var larg = Math.max(200, innerWidth - lateral - esquerda), alt = Math.max(150, innerHeight - barra);
     var s = Math.min(larg / pw, alt / ph);
@@ -2055,7 +2076,7 @@
     document.body.style.setProperty('--dir', lateral + 'px');
     palco.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
   }
-  addEventListener('resize', ajustar); ajustar();
+  addEventListener('resize', ajustar); lados(ler('lados') === 'invertido');
   if (!document.body.classList.contains('obs')) mostrarChat(ler('chat-on') === '1');
   mostrarValores();
 </script>
