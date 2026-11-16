@@ -677,7 +677,7 @@
       <button id="btn-viewers" class="alternar" type="button" aria-pressed="true">
         <span class="alternar-texto">Viewers na live</span><span class="alternar-estado">ligado</span>
       </button>
-      <p class="nota">Mostra quantas pessoas estão no chat, embaixo da logo (vem do Casterlabs; precisa do link do chat configurado). Você e bots conhecidos não entram na conta.</p>
+      <p class="nota">Soma o número oficial de espectadores de cada plataforma (o mesmo do painel dela), embaixo da logo. Vem do Casterlabs; precisa do link do chat configurado. Plataforma sem número oficial é contada pela lista do chat (aproximado, sem você e os bots); passe o mouse no 👁 do chat para ver cada uma.</p>
       <div class="campo">
         <label for="viewers-ignorar">Não contar também</label>
         <input id="viewers-ignorar" type="text" autocomplete="off" spellcheck="false" placeholder="nomes separados por vírgula">
@@ -1268,7 +1268,7 @@
   }
   // Versão do overlay: mude a cada publicação que altera o que aparece no OBS. O site, ao
   // conectar, recarrega (sem cache) as fontes do OBS que usam este endereço se a versão mudou.
-  var VERSAO = '2026-11-17-auto-cam';
+  var VERSAO = '2026-11-17-viewers';
   var notaAtualizar = document.getElementById('obs-atualizar-nota');
   function atualizarOverlaysObs() {
     if (noObs) return Promise.resolve();
@@ -2313,9 +2313,13 @@
   function ignorados() {
     return BOTS.concat(campoIgnorar.value.split(',')).map(function (s) { return s.trim().toLowerCase().replace(/^@/, ''); }).filter(Boolean);
   }
+  // Número oficial da plataforma sempre que o Casterlabs mandar (é o mesmo do painel dela).
+  // Só sem número oficial a gente conta pela lista do chat (aproximado: quem assiste sem logar não entra).
+  function fontePlat(p) { return typeof viewerCounts[p] === 'number' ? 'oficial' : Array.isArray(listasViewers[p]) ? 'lista' : ''; }
   function contaPlat(p) {
     var lista = listasViewers[p];
-    if (!Array.isArray(lista)) return typeof viewerCounts[p] === 'number' ? Math.max(0, viewerCounts[p]) : (aoVivo[p] ? null : 0);
+    if (typeof viewerCounts[p] === 'number') return Math.max(0, viewerCounts[p]);
+    if (!Array.isArray(lista)) return aoVivo[p] ? null : 0;
     var fora = ignorados(), vistos = {};
     return lista.filter(function (u) {
       var nome = String((u && (u.username || u.displayname)) || '').toLowerCase();
@@ -2332,7 +2336,10 @@
     viewersTotal = comNumero.length ? comNumero.reduce(function (s, x) { return s + x.n; }, 0) : null;
     var cv = document.getElementById('chat-viewers');
     cv.textContent = viewersTotal === null ? '' : '👁 ' + viewersTotal;
-    cv.title = viewersLista.map(function (x) { return (NOMES_PLAT[x.p] || x.p) + ': ' + (x.n === null ? 'sem número' : x.n); }).join(' · ');
+    cv.title = viewersLista.map(function (x) {
+      var f = fontePlat(x.p);
+      return (NOMES_PLAT[x.p] || x.p) + ': ' + (x.n === null ? 'sem número' : x.n + (f === 'lista' ? ' (aprox., pela lista do chat)' : ''));
+    }).join(' · ');
     cv.setAttribute('aria-label', viewersTotal === null ? '' : viewersTotal + ' assistindo (' + cv.title + ')');
     mostrarViewersLive(viewersTotal, viewersLista);
     enviarDepois();                                   // manda os números novos para o overlay da live
