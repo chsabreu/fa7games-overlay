@@ -123,7 +123,7 @@
 
   /* ===== Overlay simples: só a câmera pequena no canto, o resto é o jogo ===== */
   body.simples .marca, body.simples .viewers, body.simples .top-doadores, body.simples .musica-live,
-  body.simples .redes, body.simples .alerta-presente,
+  body.simples .redes,
   body.simples .cam .moldura, body.simples .cam .f7, body.simples .cam .faixa { display: none !important; }
   body.simples .cam { overflow: hidden; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,.55); }
   body.simples:not(.vertical) .cam,
@@ -721,6 +721,10 @@
           <option value="nenhuma">Desligada</option>
         </select>
       </div>
+      <button id="btn-auto-cam" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Melhoria automática</span><span class="alternar-estado">ligado</span>
+      </button>
+      <p class="nota">Para câmera de notebook: acerta a luz pelo seu rosto, corrige a cor (tira o amarelado ou azulado) e suaviza o ruído. Os ajustes abaixo continuam valendo por cima. <span id="auto-cam-info"></span></p>
       <div class="ajuste"><label for="fx-zoom">Zoom no rosto</label><output for="fx-zoom" data-fmt="x"></output>
         <input id="fx-zoom" type="range" min="1" max="3" step="0.05"></div>
       <div class="ajuste"><label for="fx-desfoque">Desfoque do fundo</label><output for="fx-desfoque" data-fmt="px"></output>
@@ -1074,6 +1078,61 @@
 
   var cx = null, cy = null, alvoX = null, alvoY = null, nQuadro = 0, ultimoTs = 0, ultimoTempo = -1;
   function limitar(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  // ===== Melhoria automática (câmera de notebook) =====
+  // A cada 8 quadros mede uma miniatura do rosto: ajusta o brilho para o rosto ficar bem
+  // exposto e equilibra o branco (média cinza). Tudo suavizado no tempo para não piscar.
+  var autoCam = ler('auto-cam') !== '0', btnAutoCam = document.getElementById('btn-auto-cam');
+  var autoInfo = document.getElementById('auto-cam-info');
+  var amostra = document.createElement('canvas'); amostra.width = 32; amostra.height = 18;
+  var actxAm = amostra.getContext('2d', { willReadFrequently: true });
+  var auto = { luz: 1, r: 1, g: 1, b: 1 };
+  function aplicarAutoCam(on) {
+    autoCam = !!on; gravar('auto-cam', on ? '1' : '0');
+    btnAutoCam.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnAutoCam.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+    if (!on) { auto = { luz: 1, r: 1, g: 1, b: 1 }; autoInfo.textContent = ''; }
+  }
+  btnAutoCam.addEventListener('click', function () { aplicarAutoCam(!autoCam); avisar(true); enviar(); });
+  aplicarAutoCam(autoCam);
+  function medirAuto(sx, sy, sw, sh) {
+    // mede o miolo do quadro (onde fica o rosto), não as bordas
+    try { actxAm.drawImage(video, sx + sw * .25, sy + sh * .15, sw * .5, sh * .7, 0, 0, 32, 18); } catch (e) { return; }
+    var px = actxAm.getImageData(0, 0, 32, 18).data, n = 0, r = 0, g = 0, b = 0;
+    for (var i = 0; i < px.length; i += 4) {
+      var y = .299 * px[i] + .587 * px[i + 1] + .114 * px[i + 2];
+      if (y < 12 || y > 245) continue;               // ignora preto e estourado
+      r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
+    }
+    if (n < 40) return;
+    r /= n; g /= n; b /= n;
+    var lum = (.299 * r + .587 * g + .114 * b) / 255, cinza = (r + g + b) / 3;
+    // brilho: leva o rosto para ~52%, entre 0,85× e 1,8×
+    var alvoLuz = limitar(0.52 / Math.max(lum, 0.05), 0.85, 1.8);
+    // branco: metade da correção da média cinza (a pele é quente; 100% deixaria cinzento)
+    var gr = limitar(1 + (cinza / r - 1) * .5, .8, 1.25), gg = limitar(1 + (cinza / g - 1) * .5, .8, 1.25), gb = limitar(1 + (cinza / b - 1) * .5, .8, 1.25);
+    var k = 0.15;                                   // velocidade do ajuste
+    auto.luz += (alvoLuz - auto.luz) * k; auto.r += (gr - auto.r) * k; auto.g += (gg - auto.g) * k; auto.b += (gb - auto.b) * k;
+    if (nQuadro % 64 === 0) {
+      var dl = Math.round((auto.luz - 1) * 100);
+      autoInfo.textContent = 'Agora: luz ' + (dl >= 0 ? '+' : '') + dl + '%' + (Math.abs(auto.b - auto.r) > .06 ? (auto.b > auto.r ? ', tirando amarelado' : ', tirando azulado') : ', cor ok') + '.';
+    }
+  }
+  // filtro de brilho/ruído e a camada de cor que entra depois do desenho
+  function filtroAuto() {
+    if (!autoCam) return '';
+    var m = Math.max(auto.r, auto.g, auto.b);
+    return ' brightness(' + (auto.luz * m).toFixed(3) + ') blur(0.4px)';
+  }
+  function corAuto() {
+    if (!autoCam) return;
+    var m = Math.max(auto.r, auto.g, auto.b);
+    if (Math.abs(auto.r - auto.g) < .01 && Math.abs(auto.b - auto.g) < .01) return;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgb(' + Math.round(255 * auto.r / m) + ',' + Math.round(255 * auto.g / m) + ',' + Math.round(255 * auto.b / m) + ')';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
   function quadro() {
     requestAnimationFrame(quadro);
     if (!stream || video.readyState < 2 || !video.videoWidth) return;
@@ -1099,7 +1158,8 @@
     var sh = Math.min(vh, vw / ar) / z, sw = sh * ar;
     // rosto um pouco abaixo do meio do quadro: mostra a cabeça inteira e corta o pescoço/peito
     var sx = limitar(cx - sw / 2, 0, vw - sw), sy = limitar(cy - sh * 0.6, 0, vh - sh);
-    var cor = 'sepia(' + fx.calor + ') saturate(' + fx.cor + ') brightness(' + fx.luz + ') contrast(' + fx.contraste + ')';
+    if (autoCam && nQuadro % 8 === 0) medirAuto(sx, sy, sw, sh);
+    var cor = 'sepia(' + fx.calor + ') saturate(' + fx.cor + ') brightness(' + fx.luz + ') contrast(' + fx.contraste + ')' + filtroAuto();
 
     // Pessoa recortada a cada 2 quadros (reaproveita a última máscara no meio)
     if (seg && fx.desfoque > 0 && nQuadro % 2 === 0) {
@@ -1133,6 +1193,7 @@
     } else {
       ctx.filter = cor; ctx.drawImage(video, sx, sy, sw, sh, 0, 0, W, H); ctx.filter = 'none';
     }
+    corAuto();
   }
   requestAnimationFrame(quadro);
 
@@ -1207,7 +1268,7 @@
   }
   // Versão do overlay: mude a cada publicação que altera o que aparece no OBS. O site, ao
   // conectar, recarrega (sem cache) as fontes do OBS que usam este endereço se a versão mudou.
-  var VERSAO = '2026-11-16-alertas';
+  var VERSAO = '2026-11-17-auto-cam';
   var notaAtualizar = document.getElementById('obs-atualizar-nota');
   function atualizarOverlaysObs() {
     if (noObs) return Promise.resolve();
@@ -1286,7 +1347,7 @@
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
       : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, escuro: escuro, frase: frase,
           viewers: viewersTotal, viewersPlats: viewersLista, verViewers: verViewers,
-          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes, simples: simples,
+          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes, simples: simples, autoCam: autoCam,
           inicio: inicioOn, inicioFim: inicioFim, inicioTotal: inicioTotal };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
@@ -1332,6 +1393,7 @@
       viewersTotal = e.viewers; viewersLista = Array.isArray(e.viewersPlats) ? e.viewersPlats : [];
       mostrarViewersLive(viewersTotal, viewersLista);
     }
+    if (typeof e.autoCam === 'boolean' && e.autoCam !== autoCam) aplicarAutoCam(e.autoCam);
     if (e.fx && typeof e.fx === 'object') {
       for (var k in FX_PADRAO) if (typeof e.fx[k] === 'number') fx[k] = e.fx[k];
       gravar('fx', JSON.stringify(fx)); mostrarFx();
