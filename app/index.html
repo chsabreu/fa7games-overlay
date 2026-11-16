@@ -258,7 +258,7 @@
   .painel .ajuste output { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ciano); }
   .painel .nota { font-size: 12px; color: rgba(231,236,241,.5); }
   .painel .nota:empty { display: none; }
-  .painel .linha-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .painel .linha-acoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
   .painel .com-botao { display: flex; gap: 8px; }
   .painel .com-botao input { flex: 1; }
   .painel button {
@@ -349,6 +349,15 @@
   .alerta-presente .ap-texto { display: flex; flex-direction: column; min-width: 0; }
   .alerta-presente small { font-size: 18px; font-weight: 600; color: var(--ciano); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .alerta-presente strong { font-size: 30px; font-weight: 700; line-height: 1.1; text-shadow: 0 0 12px rgba(0,221,246,.4); }
+  .alerta-presente .ap-extra { font-size: 18px; font-weight: 600; color: #FFD24A; margin-top: 2px; }
+  .alerta-presente .ap-extra:empty { display: none; }
+  /* cor da borda por tipo de alerta */
+  .alerta-presente { --cor-al: var(--ciano); --brilho-al: rgba(0,221,246,.45); border-color: var(--cor-al); box-shadow: 0 0 28px var(--brilho-al), 0 10px 26px rgba(0,0,0,.6); }
+  .alerta-presente small { color: var(--cor-al); }
+  .alerta-presente.al-seguir { --cor-al: #ff5a9a; --brilho-al: rgba(255,90,154,.45); }
+  .alerta-presente.al-bits { --cor-al: #b07bff; --brilho-al: rgba(176,123,255,.45); }
+  .alerta-presente.al-sub { --cor-al: #FFD24A; --brilho-al: rgba(255,210,74,.45); }
+  .alerta-presente.al-raid { --cor-al: #53FC18; --brilho-al: rgba(83,252,24,.4); }
   body.vertical .alerta-presente { top: 520px; }
   @media (prefers-reduced-motion: reduce) { .alerta-presente { transition: opacity .3s; transform: translate(-50%, 0); } }
 
@@ -676,16 +685,28 @@
     </section>
 
     <section class="secao" aria-labelledby="t-presentes">
-      <h2 id="t-presentes">Presentes (TikTok e outras)</h2>
-      <p class="nota">Vem do Casterlabs (precisa do link do chat configurado). Presentes do TikTok, bits, super chats etc. aparecem como alerta na live e entram no top doadores.</p>
+      <h2 id="t-presentes">Alertas e presentes</h2>
+      <p class="nota">Vem do Casterlabs (precisa do link do chat configurado). Presentes do TikTok, bits, super chats, novos seguidores, inscrições e raids aparecem como alerta na live; presentes entram no top doadores.</p>
       <button id="btn-alertas" class="alternar" type="button" aria-pressed="true">
-        <span class="alternar-texto">Alerta de presente</span><span class="alternar-estado">ligado</span>
+        <span class="alternar-texto">Alertas na live</span><span class="alternar-estado">ligado</span>
       </button>
+      <button id="btn-som" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Som dos alertas</span><span class="alternar-estado">ligado</span>
+      </button>
+      <div class="ajuste"><label for="som-volume">Volume do som</label><output for="som-volume" id="som-volume-txt"></output>
+        <input id="som-volume" type="range" min="0" max="1" step="0.05"></div>
+      <p class="nota" id="som-nota">O som toca aqui no site (uma vez só, mesmo com várias fontes no OBS) e entra na live pelo áudio do PC. Toca também no modo simples.</p>
+      <div class="linha-acoes">
+        <button class="leve" type="button" data-testar="seguir">Testar seguir</button>
+        <button class="leve" type="button" data-testar="bits">Testar bits</button>
+        <button class="leve" type="button" data-testar="sub">Testar inscrição</button>
+        <button class="leve" type="button" data-testar="raid">Testar raid</button>
+      </div>
       <button id="btn-top" class="alternar" type="button" aria-pressed="true">
         <span class="alternar-texto">Top doadores</span><span class="alternar-estado">ligado</span>
       </button>
       <div class="linha-acoes">
-        <button id="btn-testar-presente" class="leve" type="button">Testar alerta</button>
+        <button id="btn-testar-presente" class="leve" type="button">Testar presente</button>
         <button id="btn-zerar-top" class="leve" type="button">Zerar top</button>
       </div>
       <p class="nota" id="presentes-nota" role="status"></p>
@@ -850,7 +871,7 @@
     <div class="viewers" id="viewers-live" aria-hidden="true"><span class="ponto"></span><span class="num" id="viewers-num">0</span><small>assistindo</small></div>
     <div class="alerta-presente" id="alerta-presente" aria-hidden="true">
       <div class="ap-img" id="ap-img"></div>
-      <div class="ap-texto"><small id="ap-quem"></small><strong id="ap-oque"></strong></div>
+      <div class="ap-texto"><small id="ap-quem"></small><strong id="ap-oque"></strong><span class="ap-extra" id="ap-extra"></span></div>
     </div>
     <div class="musica-live sem-capa" id="musica-live" aria-hidden="true">
       <span class="ml-icone">&#x266B;</span>
@@ -1596,7 +1617,7 @@
   // ===== Presentes: alerta + top doadores =====
   // O site lê os presentes no Casterlabs, mostra e repassa para o OBS. O OBS só exibe.
   var apBox = document.getElementById('alerta-presente'), apImg = document.getElementById('ap-img');
-  var apQuem = document.getElementById('ap-quem'), apOque = document.getElementById('ap-oque');
+  var apQuem = document.getElementById('ap-quem'), apOque = document.getElementById('ap-oque'), apExtra = document.getElementById('ap-extra');
   var topLista = document.getElementById('top-lista'), presentesNota = document.getElementById('presentes-nota');
   var btnAlertas = document.getElementById('btn-alertas'), btnTop = document.getElementById('btn-top');
   var alertasOn = true, verTopOn = true, filaAlertas = [], alertaRodando = false, topDados = {};
@@ -1611,19 +1632,111 @@
     verTopOn = !!on; gravar('ver-top', on ? '1' : '0'); alternarBotao(btnTop, verTopOn);
     document.body.classList.toggle('ver-top', verTopOn);
   }
+  // Nomes dos presentes do TikTok em português (o TikTok manda em inglês). O que não estiver
+  // aqui aparece como veio, com a imagem do presente igual no chat.
+  var PRESENTES_PT = {
+    'rose': 'Rosa', 'tiktok': 'TikTok', 'gg': 'GG', 'finger heart': 'Coração com os dedos', 'heart me': 'Coração pra mim',
+    'ice cream cone': 'Casquinha', 'heart': 'Coração', 'hearts': 'Corações', 'hand hearts': 'Mãos de coração', 'hand heart': 'Coração na mão',
+    'love you': 'Te amo', 'i love you': 'Te amo', 'thumbs up': 'Joinha', 'doughnut': 'Rosquinha', 'donut': 'Rosquinha', 'perfume': 'Perfume',
+    'cake': 'Bolo', 'birthday cake': 'Bolo de aniversário', 'lollipop': 'Pirulito', 'candy': 'Bala', 'coffee': 'Café', 'tea': 'Chá',
+    'sunglasses': 'Óculos de sol', 'cap': 'Boné', 'hat and mustache': 'Chapéu e bigode', 'paper crane': 'Tsuru de papel',
+    'mishka bear': 'Ursinho Mishka', 'teddy bear': 'Ursinho', 'corgi': 'Corgi', 'gamepad': 'Controle', 'game controller': 'Controle',
+    'confetti': 'Confete', 'friendship necklace': 'Colar da amizade', 'galaxy': 'Galáxia', 'lion': 'Leão', 'universe': 'Universo',
+    'money gun': 'Chuva de dinheiro', 'money rain': 'Chuva de dinheiro', 'rocket': 'Foguete', 'planet': 'Planeta', 'whale diving': 'Mergulho da baleia',
+    'swan': 'Cisne', 'train': 'Trem', 'sports car': 'Carro esportivo', 'private jet': 'Jatinho', 'yacht': 'Iate', 'castle': 'Castelo',
+    'mirror': 'Espelho', 'disco ball': 'Globo de discoteca', 'fireworks': 'Fogos de artifício', 'balloon': 'Balão', 'balloons': 'Balões',
+    'star': 'Estrela', 'shooting star': 'Estrela cadente', 'crown': 'Coroa', 'diamond': 'Diamante', 'gold': 'Ouro', 'kiss': 'Beijo',
+    'wink wink': 'Piscadinha', 'pizza': 'Pizza', 'hot dog': 'Cachorro-quente', 'popcorn': 'Pipoca', 'fire': 'Fogo', 'flame heart': 'Coração em chamas',
+    'butterfly': 'Borboleta', 'unicorn fantasy': 'Unicórnio', 'dragon': 'Dragão', 'sun': 'Sol', 'moon': 'Lua', 'rainbow': 'Arco-íris',
+    'flowers': 'Flores', 'bouquet': 'Buquê', 'cheer you up': 'Ânimo!', 'you\'re amazing': 'Você é incrível', 'super gg': 'Super GG',
+    'interstellar': 'Interestelar', 'falcon': 'Falcão', 'rosa': 'Rosa', 'enjoy music': 'Curta a música', 'music': 'Música'
+  };
+  function nomePresente(n) { var k = String(n || '').trim(); return PRESENTES_PT[k.toLowerCase()] || k; }
   // Lê o presente do jeito que o Casterlabs mandar (os nomes dos campos variam entre plataformas)
   function lerPresente(ev) {
     var s = ev.sender || {}, ds = ev.donations || [], d = ds[0] || {};
     var qtd = ds.reduce(function (t, x) { return t + (Number(x.count || x.quantity || x.repeat_count || x.amount_count) || 1); }, 0);
     var valor = ds.reduce(function (t, x) { return t + (Number(x.amount) || 0); }, 0);
+    var bits = d.type === 'TWITCH_BITS';
     return {
+      tipo: bits ? 'bits' : 'presente',
       nome: s.displayname || s.username || 'Alguém', avatar: urlSeg(s.image_link || s.imageLink),
-      presente: d.name || d.gift_name || d.giftName || (d.type === 'TWITCH_BITS' ? 'bits' : 'presente'),
+      presente: bits ? 'bits' : nomePresente(d.name || d.gift_name || d.giftName) || 'presente',
       img: urlSeg(d.animated_image || d.animatedImage || d.image || d.imageLink),
-      qtd: qtd || 1, valor: valor, moeda: d.currency || '', plat: s.platform || ''
+      qtd: qtd || 1, valor: valor, moeda: String(d.currency || '').toUpperCase(), plat: s.platform || ''
     };
   }
   function urlSeg(u) { return typeof u === 'string' && /^https:\/\//.test(u) ? u : null; }
+  // Texto do alerta, em português, para cada tipo
+  var ICONE_AL = { presente: '🎁', bits: '💎', seguir: '❤', sub: '⭐', raid: '🚀' };
+  var PLAT_AL = { TWITCH: 'Twitch', KICK: 'Kick', YOUTUBE: 'YouTube', TIKTOK: 'TikTok', TROVO: 'Trovo' };
+  function textoAlerta(p) {
+    var t = p.tipo || 'presente', n = Number(p.qtd) || 1, nome = String(p.nome || 'Alguém');
+    var em = PLAT_AL[p.plat] ? ' na ' + PLAT_AL[p.plat] : '';
+    if (t === 'seguir') return { quem: nome, oque: 'começou a seguir!', extra: em ? 'novo seguidor' + em : '' };
+    if (t === 'sub') return { quem: nome, oque: n > 1 ? 'deu ' + n + ' inscrições!' : (p.meses > 1 ? 'se inscreveu há ' + p.meses + ' meses!' : 'se inscreveu!'), extra: '' };
+    if (t === 'raid') return { quem: nome, oque: 'chegou com uma raid!', extra: n > 0 ? n + (n === 1 ? ' pessoa chegando' : ' pessoas chegando') : '' };
+    if (t === 'bits') {
+      var b = Number(p.valor) || n;
+      return { quem: nome + ' mandou', oque: b.toLocaleString('pt-BR') + (b === 1 ? ' bit' : ' bits') + '!', extra: '' };
+    }
+    var moedas = (p.moeda === 'TIKTOK_COINS' || p.moeda === 'COINS') && p.valor > 0;
+    var dinheiro = !moedas && p.valor > 0 && p.moeda;
+    return {
+      quem: nome + ' enviou',
+      oque: (n > 1 ? n + '× ' : '') + String(p.presente || 'presente') + '!',
+      extra: moedas ? '🪙 ' + p.valor.toLocaleString('pt-BR') + (p.valor === 1 ? ' moeda' : ' moedas') : (dinheiro ? p.valor.toLocaleString('pt-BR') + ' ' + p.moeda : '')
+    };
+  }
+
+  // ===== Som dos alertas: sintetizado aqui mesmo (sem arquivos), toca só no site =====
+  // Assim toca uma vez, mesmo com várias fontes do overlay no OBS.
+  var btnSom = document.getElementById('btn-som'), somVol = document.getElementById('som-volume');
+  var somVolTxt = document.getElementById('som-volume-txt'), somNota = document.getElementById('som-nota');
+  var somOn = ler('som') !== '0', actx = null;
+  somVol.value = ler('som-volume') || 0.6;
+  function mostrarVolume() { somVolTxt.textContent = Math.round(parseFloat(somVol.value) * 100) + '%'; }
+  function aplicarSom(on) { somOn = !!on; gravar('som', on ? '1' : '0'); alternarBotao(btnSom, somOn); }
+  btnSom.addEventListener('click', function () { aplicarSom(!somOn); if (somOn) tocarSom('seguir'); });
+  somVol.addEventListener('input', function () { gravar('som-volume', somVol.value); mostrarVolume(); });
+  somVol.addEventListener('change', function () { tocarSom('presente'); });
+  aplicarSom(somOn); mostrarVolume();
+  function audio() {
+    if (!actx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; actx = new C(); }
+    if (actx.state === 'suspended') actx.resume().catch(function () {});
+    return actx;
+  }
+  // O Chrome só libera som depois de um clique na página: o primeiro clique ou tecla já destrava.
+  ['pointerdown', 'keydown'].forEach(function (t) { addEventListener(t, function () { if (!noObs) audio(); }, { capture: true }); });
+  // Cada som é uma lista de notas [frequência, início (s), duração (s), forma da onda]
+  var SONS = {
+    seguir:   [[659, 0, .18, 'sine'], [880, .12, .32, 'sine']],
+    presente: [[1047, 0, .12, 'triangle'], [1319, .08, .12, 'triangle'], [1568, .16, .12, 'triangle'], [2093, .24, .4, 'triangle']],
+    bits:     [[988, 0, .08, 'square'], [1319, .07, .3, 'square']],
+    sub:      [[523, 0, .16, 'sawtooth'], [659, .14, .16, 'sawtooth'], [784, .28, .16, 'sawtooth'], [1047, .42, .5, 'sawtooth']],
+    raid:     [[392, 0, .2, 'sawtooth'], [523, .15, .2, 'sawtooth'], [659, .3, .2, 'sawtooth'], [784, .45, .2, 'sawtooth'], [1047, .6, .7, 'sawtooth']]
+  };
+  function tocarSom(tipo) {
+    if (noObs || !somOn) return;
+    var a = audio(), notas = SONS[tipo] || SONS.presente; if (!a) return;
+    if (a.state !== 'running') { somNota.textContent = 'Clique em qualquer lugar do site para liberar o som dos alertas.'; return; }
+    var vol = parseFloat(somVol.value) || 0, t0 = a.currentTime + 0.02;
+    if (!vol) return;
+    var saida = a.createGain(); saida.gain.value = vol * 0.35; saida.connect(a.destination);
+    notas.forEach(function (n) {
+      var o = a.createOscillator(), g = a.createGain(), ini = t0 + n[1], fim = ini + n[2];
+      o.type = n[3]; o.frequency.value = n[0];
+      g.gain.setValueAtTime(0.0001, ini); g.gain.exponentialRampToValueAtTime(n[3] === 'sine' ? 1 : 0.5, ini + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, fim);
+      o.connect(g); g.connect(saida); o.start(ini); o.stop(fim + 0.05);
+    });
+  }
+  // Alerta novo vindo do chat (site): mostra, toca o som e repassa para o OBS
+  function dispararAlerta(p) {
+    tocarSom(p.tipo);
+    mostrarAlerta(p);
+    if (ws && ws.pronto && alertasOn) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, presente: p } }).catch(function () {});
+  }
   function mostrarAlerta(p) {
     if (!p || !alertasOn) return;
     filaAlertas.push(p); if (filaAlertas.length > 30) filaAlertas.shift();
@@ -1633,11 +1746,13 @@
     var p = filaAlertas.shift();
     if (!p) { alertaRodando = false; return; }
     alertaRodando = true;
+    var tipo = ICONE_AL[p.tipo] ? p.tipo : 'presente', tx = textoAlerta(p);
     apImg.textContent = '';
     if (urlSeg(p.img)) { var i = document.createElement('img'); i.src = p.img; i.alt = ''; apImg.appendChild(i); }
-    else apImg.textContent = '🎁';
-    apQuem.textContent = String(p.nome || 'Alguém') + ' enviou';
-    apOque.textContent = (p.qtd > 1 ? p.qtd + '× ' : '') + String(p.presente || 'presente') + '!';
+    else apImg.textContent = ICONE_AL[tipo];
+    apQuem.textContent = tx.quem; apOque.textContent = tx.oque; apExtra.textContent = tx.extra || '';
+    apBox.className = 'alerta-presente al-' + tipo;
+    void apBox.offsetWidth;                          // reinicia a animação de entrada
     apBox.classList.add('show');
     setTimeout(function () { apBox.classList.remove('show'); setTimeout(proximoAlerta, 700); }, 5000);
   }
@@ -1664,19 +1779,31 @@
     var t = topDados[chave] || (topDados[chave] = { nome: p.nome, avatar: p.avatar, valor: 0, qtd: 0 });
     t.valor += p.valor; t.qtd += p.qtd; if (p.avatar) t.avatar = p.avatar;
     gravar('top-presentes', JSON.stringify(topDados));
-    mostrarAlerta(p); mostrarTop(topOrdenado());
-    if (ws && ws.pronto) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, presente: p } }).catch(function () {});
+    dispararAlerta(p); mostrarTop(topOrdenado());
     enviar();
   }
   btnAlertas.addEventListener('click', function () { aplicarAlertas(!alertasOn); avisar(true); enviar(); });
   btnTop.addEventListener('click', function () { aplicarVerTop(!verTopOn); avisar(true); enviar(); });
   document.getElementById('btn-testar-presente').addEventListener('click', function () {
-    var p = { nome: 'fa7her (teste)', presente: 'Rosa', img: null, qtd: 5, valor: 5, plat: 'TIKTOK' };
-    mostrarAlerta(p);
+    var p = { tipo: 'presente', nome: 'fa7her (teste)', presente: nomePresente('Rose'), img: null, qtd: 5, valor: 5, moeda: 'TIKTOK_COINS', plat: 'TIKTOK' };
+    tocarSom('presente'); mostrarAlerta(p);
     if (ws && ws.pronto) {
       pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, presente: p } }).catch(function () {});
       presentesNota.textContent = 'Alerta de teste enviado para a live.';
     } else presentesNota.textContent = 'Mostrado só aqui: o site não está conectado ao OBS.';
+  });
+  var TESTES_AL = {
+    seguir: { tipo: 'seguir', nome: 'fa7her (teste)', plat: 'TWITCH' },
+    bits: { tipo: 'bits', nome: 'fa7her (teste)', valor: 100, qtd: 1, plat: 'TWITCH' },
+    sub: { tipo: 'sub', nome: 'fa7her (teste)', qtd: 1, meses: 3, plat: 'TWITCH' },
+    raid: { tipo: 'raid', nome: 'fa7her (teste)', qtd: 12, plat: 'TWITCH' }
+  };
+  document.querySelectorAll('[data-testar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var p = TESTES_AL[b.dataset.testar]; if (!p) return;
+      dispararAlerta(Object.assign({}, p));
+      presentesNota.textContent = ws && ws.pronto ? 'Alerta de teste enviado para a live.' : 'Mostrado só aqui: o site não está conectado ao OBS.';
+    });
   });
   document.getElementById('btn-zerar-top').addEventListener('click', function () {
     topDados = {}; gravar('top-presentes', '{}'); mostrarTop([]); enviar(); presentesNota.textContent = 'Top doadores zerado.';
@@ -2201,7 +2328,7 @@
       if (img) { var gi = el('img'); gi.src = img; gi.alt = d.name || ''; gi.loading = 'lazy'; box.appendChild(gi); }
       else box.appendChild(el('span', 'p-emoji', d.type === 'TWITCH_BITS' ? '💎' : '🎁'));
       var qtd = Number(d.count || d.quantity || d.repeat_count) || 1, info = el('span');
-      info.appendChild(document.createTextNode('×' + qtd + (d.name ? ' ' + d.name : '')));
+      info.appendChild(document.createTextNode('×' + qtd + (d.name ? ' ' + nomePresente(d.name) : '')));
       var moeda = String(d.currency || '').toUpperCase();
       if (d.amount && moeda && moeda !== 'TIKTOK_COINS' && moeda !== 'COINS') { info.appendChild(el('br')); info.appendChild(el('small', '', d.amount + ' ' + moeda)); }
       box.appendChild(info); txt.appendChild(box);
@@ -2250,6 +2377,15 @@
     var id = chaveEv(ev); if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
     addLinha(el('li', 'sistema', ev.raw || ev.text || ''));
   }
+  // Seguir, inscrição e raid novos (não os do histórico) viram alerta com som na live
+  var alertasVistos = {};
+  function alertaChat(ev, tipo, u, extra) {
+    var k = tipo + ':' + chaveEv(ev);
+    if (carregandoHistorico || alertasVistos[k]) return; alertasVistos[k] = 1;
+    u = u || {};
+    dispararAlerta(Object.assign({ tipo: tipo, nome: u.displayname || u.username || 'Alguém', img: null,
+      plat: u.platform || (ev.streamer && ev.streamer.platform) || '' }, extra));
+  }
   function eventoKoi(ev) {
     switch (ev.event_type) {
       case 'RICH_MESSAGE':
@@ -2261,17 +2397,20 @@
       case 'PLATFORM_MESSAGE': sistema(ev); break;
       case 'FOLLOW':
         if (chatVistos[chaveEv(ev) + 'ev-follow'] || jaSeguiu(ev)) break;
-        evento(ev, 'ev-follow', '❤', [ev.follower || ev.sender, ' começou a seguir']); break;
+        evento(ev, 'ev-follow', '❤', [ev.follower || ev.sender, ' começou a seguir']);
+        alertaChat(ev, 'seguir', ev.follower || ev.sender, {}); break;
       case 'SUBSCRIPTION': {
         var sub = ev.subscriber || ev.sender, meses = Number(ev.months) || 0, rec = ev.gift_recipients || ev.giftRecipients;
         var tipo = String(ev.sub_type || ev.subType || '');
         if (/GIFT/.test(tipo) && Array.isArray(rec) && rec.length) evento(ev, 'ev-sub', '🎁', [sub, ' deu ' + rec.length + (rec.length > 1 ? ' inscrições' : ' inscrição')]);
         else if (/GIFT/.test(tipo) && rec && typeof rec === 'object') evento(ev, 'ev-sub', '🎁', [sub, ' deu uma inscrição para ', rec]);
         else evento(ev, 'ev-sub', '⭐', [sub, meses > 1 ? ' se inscreveu há ' + meses + ' meses' : ' se inscreveu']);
+        alertaChat(ev, 'sub', sub, { qtd: Array.isArray(rec) ? rec.length : 1, meses: meses });
         break;
       }
       case 'RAID':
-        evento(ev, 'ev-raid', '🚀', [ev.host || ev.sender, ' chegou com uma raid de ' + (Number(ev.viewers) || 0) + ' pessoas']); break;
+        evento(ev, 'ev-raid', '🚀', [ev.host || ev.sender, ' chegou com uma raid de ' + (Number(ev.viewers) || 0) + ' pessoas']);
+        alertaChat(ev, 'raid', ev.host || ev.sender, { qtd: Number(ev.viewers) || 0 }); break;
       case 'CHANNEL_POINTS':
         evento(ev, 'ev-pontos', '✨', [ev.sender, ' resgatou ' + ((ev.reward && ev.reward.title) || 'uma recompensa')]); break;
       case 'META':   // mensagem apagada
