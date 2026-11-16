@@ -799,6 +799,8 @@
         </div>
       </div>
       <p class="nota" id="obs-cam" role="status"></p>
+      <button id="btn-atualizar-obs" class="leve" type="button">Atualizar overlays no OBS</button>
+      <p class="nota" id="obs-atualizar-nota" role="status">O OBS guarda o overlay em cache. Quando sai uma versão nova, o site recarrega as fontes do overlay no OBS sozinho (pisca uma vez); este botão faz isso na hora.</p>
     </section>
   </aside>
   <button class="lados" id="btn-lados" type="button" aria-pressed="false" title="Inverter lados (painel e chat)">&#x21C4; Inverter lados</button>
@@ -1203,6 +1205,34 @@
     var h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
     return btoa(String.fromCharCode.apply(null, new Uint8Array(h)));
   }
+  // Versão do overlay: mude a cada publicação que altera o que aparece no OBS. O site, ao
+  // conectar, recarrega (sem cache) as fontes do OBS que usam este endereço se a versão mudou.
+  var VERSAO = '2026-11-16-alertas';
+  var notaAtualizar = document.getElementById('obs-atualizar-nota');
+  function atualizarOverlaysObs() {
+    if (noObs) return Promise.resolve();
+    var n = 0;
+    return pedir('GetInputList', { inputKind: 'browser_source' }).then(function (r) {
+      return (r.inputs || []).reduce(function (fila, inp) {
+        return fila.then(function () {
+          return pedir('GetInputSettings', { inputName: inp.inputName }).then(function (s) {
+            var url = String((s.inputSettings && s.inputSettings.url) || '');
+            if (url.indexOf('//' + location.host + '/') < 0) return;
+            n++;
+            return pedir('PressInputPropertiesButton', { inputName: inp.inputName, propertyName: 'refreshnocache' });
+          });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      gravar('versao-obs', VERSAO);
+      notaAtualizar.textContent = n ? n + (n === 1 ? ' fonte do overlay atualizada no OBS.' : ' fontes do overlay atualizadas no OBS.')
+        : 'Nenhuma fonte do OBS usa ' + location.host + '.';
+    }).catch(function (e) { notaAtualizar.textContent = 'Não consegui atualizar as fontes do OBS: ' + e.message; });
+  }
+  document.getElementById('btn-atualizar-obs').addEventListener('click', function () {
+    if (!ws || !ws.pronto) { notaAtualizar.textContent = 'Conecte ao OBS primeiro.'; return; }
+    notaAtualizar.textContent = 'Atualizando...'; atualizarOverlaysObs();
+  });
   function pedir(tipo, dados) {
     return new Promise(function (ok, falha) {
       if (!ws || ws.readyState !== 1 || !ws.pronto) return falha(new Error('OBS desconectado'));
@@ -1232,7 +1262,8 @@
       } else if (msg.op === 2) {        // Conectado
         w.pronto = true; status('OBS conectado', 'on');
         // O overlay da live pede o estado atual; o site responde com o dele
-        if (noObs) { enviar({ pedido: 'estado' }); enviarDiag(); if (!recebendo) pedirVideo(); } else enviar();
+        if (noObs) { enviar({ pedido: 'estado' }); enviarDiag(); if (!recebendo) pedirVideo(); }
+        else { enviar(); if (ler('versao-obs') !== VERSAO) atualizarOverlaysObs(); }
       } else if (msg.op === 7) {        // Resposta
         var p = pedidos[d.requestId]; if (!p) return; delete pedidos[d.requestId];
         d.requestStatus.result ? p.ok(d.responseData || {}) : p.falha(new Error(d.requestStatus.comment || 'erro ' + d.requestStatus.code));
