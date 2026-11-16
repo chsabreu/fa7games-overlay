@@ -121,6 +121,18 @@
   body:not(.obs) .cam.ao-vivo .previa { display: none; }
   .cam .previa { text-align: center; padding: 0 12px; font-size: 16px; }
 
+  /* ===== Overlay simples: só a câmera pequena no canto, o resto é o jogo ===== */
+  body.simples .marca, body.simples .viewers, body.simples .top-doadores, body.simples .musica-live,
+  body.simples .redes, body.simples .alerta-presente,
+  body.simples .cam .moldura, body.simples .cam .f7, body.simples .cam .faixa { display: none !important; }
+  body.simples .cam { overflow: hidden; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,.55); }
+  body.simples:not(.vertical) .cam,
+  body.simples:not(.vertical).cam-be .cam, body.simples:not(.vertical).cam-cd .cam, body.simples:not(.vertical).cam-ce .cam {
+    width: 256px; height: 144px; top: auto; bottom: 24px; left: auto; right: 24px;
+  }
+  body.simples:not(.vertical).cam-be .cam, body.simples:not(.vertical).cam-ce .cam { right: auto; left: 24px; }
+  body.simples:not(.vertical).cam-cd .cam, body.simples:not(.vertical).cam-ce .cam { bottom: auto; top: 24px; }
+
   /* ===== Painel de controle (barra lateral; some no OBS) ===== */
   .aba, .chat { display: none; }
   /* ===== Música ===== */
@@ -639,6 +651,10 @@
           </select>
         </div>
       </div>
+      <button id="btn-simples" class="alternar" type="button" aria-pressed="false">
+        <span class="alternar-texto">Overlay simples</span><span class="alternar-estado">desligado</span>
+      </button>
+      <p class="nota">Só a câmera pequena no canto, sem moldura, logo, faixa do jogo, viewers, top presentes nem alertas. A tela de abertura continua funcionando.</p>
       <button id="btn-inicio" class="alternar inicio-botao" type="button" aria-pressed="false">
         <span class="alternar-texto">A live já vai começar</span><span class="alternar-estado">desligado</span>
       </button>
@@ -1218,7 +1234,7 @@
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
       : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, escuro: escuro, frase: frase,
           viewers: viewersTotal, viewersPlats: viewersLista, verViewers: verViewers,
-          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes,
+          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes, simples: simples,
           inicio: inicioOn, inicioFim: inicioFim, inicioTotal: inicioTotal };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
@@ -1245,6 +1261,7 @@
     if (noObs && Array.isArray(e.top)) mostrarTop(e.top);
     if (typeof e.verMusica === 'boolean') aplicarVerMusica(e.verMusica);
     if (typeof e.verRedes === 'boolean') aplicarVerRedes(e.verRedes);
+    if (typeof e.simples === 'boolean' && !q.has('simples')) aplicarSimples(e.simples);
     if (noObs && 'musica' in e) mostrarMusicaLive(e.musica);
     if (e.pedido === 'video') { if (!noObs) oferecer(e.de).catch(function (err) { console.warn('WebRTC', err); }); return; }
     if (e.pedido === 'parar-video') {           // a fonte saiu do ar: para de codificar vídeo para ela
@@ -1561,6 +1578,16 @@
     btnRedes.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
   }
   btnRedes.addEventListener('click', function () { aplicarVerRedes(!verRedes); avisar(true); enviar(); });
+  // Overlay simples (só a câmera no canto). ?simples=1 ou ?simples=0 na URL da fonte fixa o modo.
+  var simples = false, btnSimples = document.getElementById('btn-simples');
+  function aplicarSimples(on) {
+    simples = !!on; if (!q.has('simples')) gravar('simples', on ? '1' : '0');
+    document.body.classList.toggle('simples', simples);
+    btnSimples.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnSimples.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+  }
+  btnSimples.addEventListener('click', function () { aplicarSimples(!simples); avisar(true); enviar(); });
+  aplicarSimples(q.has('simples') ? q.get('simples') !== '0' : ler('simples') === '1');
   aplicarVerRedes(ler('ver-redes') !== '0');
   mostrarMusicaLive(null);
   btnMusicaLive.addEventListener('click', function () { aplicarVerMusica(!verMusica); avisar(true); enviar(); });
@@ -2117,8 +2144,34 @@
     while (chatLista.children.length > 200) chatLista.removeChild(chatLista.firstChild);
     if (noFim) chatLista.scrollTop = chatLista.scrollHeight;
   }
+  // Chave do evento para não repetir: o id, ou (se não vier id) tipo + pessoa + horário + texto.
+  // O Casterlabs reenvia o histórico a cada reconexão, então sem isso tudo aparecia de novo.
+  function chaveEv(ev) {
+    var id = ev.meta_id || ev.id; if (id) return String(id);
+    var u = ev.sender || ev.follower || ev.subscriber || ev.host || ev.viewer || {};
+    var k = [ev.event_type, u.platform, u.username || u.displayname, ev.timestamp, ev.raw].join('|');
+    return k.replace(/\|/g, '') ? k : null;
+  }
+  // Quem já seguiu (por plataforma e nome) não aparece de novo: seguir, deixar de seguir e
+  // seguir de novo, ou o Casterlabs reenviando o mesmo seguir depois de cair, viravam várias linhas.
+  var SEGUIU_DIAS = 30, seguiram = {};
+  try { seguiram = JSON.parse(ler('seguiram') || '{}') || {}; } catch (e) { seguiram = {}; }
+  function jaSeguiu(ev) {
+    var u = ev.follower || ev.sender || {}, pl = u.platform || (ev.streamer && ev.streamer.platform) || '';
+    var nome = String(u.username || u.displayname || '').toLowerCase();
+    if (!nome) return false;
+    var k = pl + ':' + nome, agora = Date.now();
+    if (seguiram[k] && agora - seguiram[k] < SEGUIU_DIAS * 864e5) return true;
+    seguiram[k] = agora;
+    var ks = Object.keys(seguiram);                 // limpa os antigos e limita o tamanho
+    ks.forEach(function (x) { if (agora - seguiram[x] >= SEGUIU_DIAS * 864e5) delete seguiram[x]; });
+    ks = Object.keys(seguiram).sort(function (a, b) { return seguiram[a] - seguiram[b]; });
+    while (ks.length > 2000) delete seguiram[ks.shift()];
+    gravar('seguiram', JSON.stringify(seguiram));
+    return false;
+  }
   function mensagem(ev) {
-    var id = ev.meta_id || ev.id;
+    var id = chaveEv(ev);
     if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
     if (ev.is_visible === false) return;
     var li = el('li', ev.donations && ev.donations.length ? 'doacao' : '');
@@ -2160,7 +2213,7 @@
   var SIGLA = { TWITCH: 'TW', KICK: 'KICK', YOUTUBE: 'YT', TIKTOK: 'TT' };
   function nomeDe(u) { return (u && (u.displayname || u.username)) || 'Alguém'; }
   function evento(ev, cls, icone, partes) {
-    var id = ev.meta_id || ev.id; if (id && chatVistos[id + cls]) return; if (id) chatVistos[id + cls] = 1;
+    var id = chaveEv(ev); if (id && chatVistos[id + cls]) return; if (id) chatVistos[id + cls] = 1;
     var li = el('li', 'evento ' + cls);
     var pl = (ev.streamer && ev.streamer.platform) || (ev.sender && ev.sender.platform);
     if (pl && cls !== 'ev-entrada') li.appendChild(el('span', 'plat ' + pl, SIGLA[pl] || pl));
@@ -2194,7 +2247,7 @@
   aplicarEntradas(entradasOn);
 
   function sistema(ev) {
-    var id = ev.meta_id || ev.id; if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
+    var id = chaveEv(ev); if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
     addLinha(el('li', 'sistema', ev.raw || ev.text || ''));
   }
   function eventoKoi(ev) {
@@ -2207,6 +2260,7 @@
         mensagem(ev); break;
       case 'PLATFORM_MESSAGE': sistema(ev); break;
       case 'FOLLOW':
+        if (chatVistos[chaveEv(ev) + 'ev-follow'] || jaSeguiu(ev)) break;
         evento(ev, 'ev-follow', '❤', [ev.follower || ev.sender, ' começou a seguir']); break;
       case 'SUBSCRIPTION': {
         var sub = ev.subscriber || ev.sender, meses = Number(ev.months) || 0, rec = ev.gift_recipients || ev.giftRecipients;
@@ -2250,18 +2304,47 @@
         if (ev.streamer && ev.streamer.platform && typeof ev.count === 'number') { viewerCounts[ev.streamer.platform] = ev.count; atualizarViewers(); }
         break;
       case 'CLEARCHAT':
-        chatLista.textContent = ''; chatVistos = {}; break;
+        // limpa a tela, mas lembra o que já passou: senão o histórico reenviado volta inteiro
+        chatLista.textContent = ''; break;
     }
+  }
+  // Conexão com o Casterlabs: religa sozinha, com espera crescente (4 s, 8 s... até 30 s),
+  // na hora em que a internet volta ou a aba volta a ficar visível, e quando fica muda demais
+  // (o socket pode ficar "aberto" sem receber nada depois que o PC dorme ou a rede troca).
+  var chatUrl = null, chatTentativas = 0, chatUltima = 0, CHAT_MUDO_MS = 3 * 60 * 1000;
+  setInterval(function () {
+    if (chatWs && chatWs.readyState === 1 && Date.now() - chatUltima > CHAT_MUDO_MS) {
+      estadoChat('Casterlabs mudo, religando...', 'erro'); chatWs.close();
+    }
+  }, 30000);
+  function religarJa() {
+    if (!chatUrl || (chatWs && chatWs.readyState <= 1)) return;
+    chatTentativas = 0; conectarChat(chatUrl);
+  }
+  window.addEventListener('online', religarJa);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) religarJa(); });
+  // Plataformas que estavam no Casterlabs e sumiram = o login delas caiu lá (YouTube e TikTok
+  // pedem para entrar de novo de tempos em tempos). Avisa em vez de ficar sem dados calado.
+  function conferirLogins(atuais) {
+    if (!atuais.length) return true;                 // app ainda abrindo: não conclui nada
+    var antes = (ler('chat-plats') || '').split(',').filter(Boolean);
+    var sumiram = antes.filter(function (p) { return atuais.indexOf(p) < 0; });
+    gravar('chat-plats', atuais.join(','));          // avisa uma vez (se tirou de propósito, não insiste)
+    if (!sumiram.length) return true;
+    estadoChat('entre de novo no Casterlabs: ' + sumiram.map(function (p) { return NOMES_PLAT[p] || p; }).join(', '), 'erro');
+    return false;
   }
   function conectarChat(url) {
     desconectarChat();
-    estadoChat('conectando ao Casterlabs...');
+    chatUrl = url;
+    estadoChat(chatTentativas ? 'religando ao Casterlabs...' : 'conectando ao Casterlabs...');
     var w; try { w = new WebSocket(url); } catch (e) { estadoChat('não conectou', 'erro'); return; }
-    chatWs = w;
+    chatWs = w; chatUltima = Date.now();
     w.onmessage = function (m) {
+      chatUltima = Date.now();
       var msg; try { msg = JSON.parse(m.data); } catch (e) { return; }
       if (msg.type === 'PING') w.send(JSON.stringify({ type: 'PONG', data: {} }));
-      else if (msg.type === 'INIT') { w.send(JSON.stringify({ type: 'READY', data: {} })); estadoChat('ao vivo', 'on'); }
+      else if (msg.type === 'INIT') { w.send(JSON.stringify({ type: 'READY', data: {} })); chatTentativas = 0; estadoChat('ao vivo', 'on'); }
       else if (msg.type === 'KOI_STATICS') {
         carregandoHistorico = true; (msg.data.history || []).forEach(eventoKoi); carregandoHistorico = false;
         viewerCounts = Object.assign({}, msg.data.viewerCounts || {});
@@ -2276,18 +2359,22 @@
         aoVivo = {};
         Object.keys(msg.data.streamStates || {}).forEach(function (k) { aoVivo[k] = !!msg.data.streamStates[k].is_live; });
         atualizarViewers();
+        if (conferirLogins(Object.keys(msg.data.userStates || {}))) estadoChat('ao vivo', 'on');
       }
       else if (msg.type === 'KOI') eventoKoi(msg.data);
       else if (msg.type === 'ERROR') estadoChat('erro do Casterlabs (link antigo?)', 'erro');
     };
     w.onclose = function () {
       if (chatWs !== w) return;
-      chatWs = null; estadoChat('Casterlabs fechado? tentando de novo...', 'erro');
-      chatReligar = setTimeout(function () { conectarChat(url); }, 4000);
+      chatWs = null; chatTentativas++;
+      var espera = Math.min(30, 4 * Math.pow(2, chatTentativas - 1));
+      estadoChat(chatTentativas > 3 ? 'Casterlabs fechado? Abra o app (tentando a cada ' + espera + ' s)' : 'caiu, religando em ' + espera + ' s...', 'erro');
+      chatReligar = setTimeout(function () { conectarChat(url); }, espera * 1000);
     };
   }
-  function desconectarChat() {
+  function desconectarChat(parar) {
     clearTimeout(chatReligar);
+    if (parar) { chatUrl = null; chatTentativas = 0; }
     if (chatWs) { var w = chatWs; chatWs = null; try { w.close(); } catch (e) {} }
   }
 
@@ -2299,10 +2386,10 @@
     document.body.style.setProperty('--chat-l', chatLargura() + 'px');
     chatBox.classList.toggle('modo-frame', on && !ws);
     if (on && ws) { chatFrame.removeAttribute('src'); if (!chatWs) conectarChat(ws); }
-    else if (on) { desconectarChat(); estadoChat(''); if (chatFrame.getAttribute('src') !== u) chatFrame.src = u; }
+    else if (on) { desconectarChat(true); estadoChat(''); if (chatFrame.getAttribute('src') !== u) chatFrame.src = u; }
     else {                                   // chat escondido: continua conectado para contar os viewers
       chatFrame.removeAttribute('src');
-      if (ws) { if (!chatWs) conectarChat(ws); } else desconectarChat();
+      if (ws) { if (!chatWs) conectarChat(ws); } else desconectarChat(true);
     }
     btnChat.setAttribute('aria-pressed', on ? 'true' : 'false');
     btnChat.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
@@ -2310,7 +2397,7 @@
   }
   btnChat.addEventListener('click', function () { mostrarChat(!document.body.classList.contains('chat-on')); });
   chatLink.addEventListener('change', function () {
-    gravar('chat-link', chatLink.value.trim()); desconectarChat(); chatLista.textContent = ''; chatVistos = {};
+    gravar('chat-link', chatLink.value.trim()); desconectarChat(true); chatLista.textContent = ''; chatVistos = {};
     if (document.body.classList.contains('chat-on')) mostrarChat(true);
   });
   chatLarg.addEventListener('input', function () {
