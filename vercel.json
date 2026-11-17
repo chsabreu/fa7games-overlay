@@ -1,4 +1,7 @@
 {
   "framework": null,
-  "outputDirectory": "app"
+  "outputDirectory": "app",
+  "redirects": [
+    { "source": "/:path*", "destination": "https://www.desponta.live/overlay/", "permanent": false }
+  ]
 }
