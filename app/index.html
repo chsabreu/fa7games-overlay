@@ -122,7 +122,7 @@
   .cam .previa { text-align: center; padding: 0 12px; font-size: 16px; }
 
   /* ===== Overlay simples: só a câmera pequena no canto, o resto é o jogo ===== */
-  body.simples .marca, body.simples .viewers, body.simples .top-doadores, body.simples .musica-live,
+  body.simples .marca, body.simples .top-doadores, body.simples .musica-live,
   body.simples .redes,
   body.simples .cam .moldura, body.simples .cam .f7, body.simples .cam .faixa { display: none !important; }
   body.simples .cam { overflow: hidden; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,.55); }
@@ -132,6 +132,42 @@
   }
   body.simples:not(.vertical).cam-be .cam, body.simples:not(.vertical).cam-ce .cam { right: auto; left: 24px; }
   body.simples:not(.vertical).cam-cd .cam, body.simples:not(.vertical).cam-ce .cam { bottom: auto; top: 24px; }
+
+  /* Simples horizontal: espectadores colados na câmera e o chat empilhado depois deles.
+     Câmera embaixo: sobem a partir dela. Câmera em cima: descem. */
+  body.simples:not(.vertical) .viewers {
+    top: auto; bottom: 178px; left: auto; right: 24px; transform: none;
+    padding: 4px 11px 4px 9px; border-radius: 6px; border-bottom: 0;
+    background: rgba(12,14,17,.72); box-shadow: 0 2px 10px rgba(0,0,0,.45);
+  }
+  body.simples:not(.vertical) .viewers .num { font-size: 17px; }
+  body.simples:not(.vertical) .viewers small { font-size: 10px; }
+  body.simples:not(.vertical).cam-be .viewers, body.simples:not(.vertical).cam-ce .viewers { right: auto; left: 24px; }
+  body.simples:not(.vertical).cam-cd .viewers, body.simples:not(.vertical).cam-ce .viewers { bottom: auto; top: 178px; }
+
+  .chat-live { display: none; }
+  body.simples.ver-chat-live:not(.vertical) .chat-live {
+    position: absolute; right: 24px; bottom: 222px; width: 340px; max-height: 430px;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; overflow: hidden;
+    font-family: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif;
+  }
+  body.simples.ver-chat-live:not(.vertical).cam-be .chat-live, body.simples.ver-chat-live:not(.vertical).cam-ce .chat-live { right: auto; left: 24px; }
+  body.simples.ver-chat-live:not(.vertical).cam-cd .chat-live, body.simples.ver-chat-live:not(.vertical).cam-ce .chat-live {
+    bottom: auto; top: 222px; flex-direction: column-reverse;
+  }
+  .chat-live .cl { padding: 6px 10px; border-radius: 8px; background: rgba(12,14,17,.72); color: #fff;
+    font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    animation: cl-entra .3s ease-out; transition: opacity .8s; }
+  .chat-live .cl.some { opacity: 0; }
+  .chat-live .cl b { font-weight: 700; margin-right: 6px; }
+  .chat-live .cl i { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-right: 6px;
+    vertical-align: 2px; background: #555; color: #fff; }
+  .chat-live .cl i.TWITCH { background: #9146FF; } .chat-live .cl i.YOUTUBE { background: #FF0033; }
+  .chat-live .cl i.KICK { background: #53FC18; color: #0b0b0b; } .chat-live .cl i.TIKTOK { background: #25F4EE; color: #0b0b0b; }
+  .chat-live .cl img { height: 22px; vertical-align: middle; }
+  .chat-live .cl .pr { color: #FFD24A; font-weight: 700; }
+  @keyframes cl-entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .chat-live .cl { animation: none; } }
 
   /* ===== Painel de controle (barra lateral; some no OBS) ===== */
   .aba, .chat { display: none; }
@@ -660,10 +696,14 @@
           </select>
         </div>
       </div>
-      <button id="btn-simples" class="alternar" type="button" aria-pressed="false">
-        <span class="alternar-texto">Overlay simples</span><span class="alternar-estado">desligado</span>
+      <button id="btn-simples" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Overlay simples</span><span class="alternar-estado">ligado</span>
       </button>
-      <p class="nota">Só a câmera pequena no canto, sem moldura, logo, faixa do jogo, viewers, top presentes nem alertas. A tela de abertura continua funcionando.</p>
+      <p class="nota">Padrão: câmera pequena no canto, espectadores junto dela e o chat em cima (só no horizontal). Sem moldura, logo, faixa do jogo nem top presentes. Alertas e tela de abertura continuam.</p>
+      <button id="btn-chat-live" class="alternar" type="button" aria-pressed="true">
+        <span class="alternar-texto">Chat na live (horizontal)</span><span class="alternar-estado">ligado</span>
+      </button>
+      <p class="nota">As mensagens do chat aparecem em cima da câmera e somem depois de 1 minuto. Só no overlay horizontal e no modo simples.</p>
       <button id="btn-inicio" class="alternar inicio-botao" type="button" aria-pressed="false">
         <span class="alternar-texto">A live já vai começar</span><span class="alternar-estado">desligado</span>
       </button>
@@ -724,7 +764,7 @@
       <button id="btn-auto-cam" class="alternar" type="button" aria-pressed="true">
         <span class="alternar-texto">Melhoria automática</span><span class="alternar-estado">ligado</span>
       </button>
-      <p class="nota">Para câmera de notebook: acerta a luz pelo seu rosto, corrige a cor (tira o amarelado ou azulado) e suaviza o ruído. Os ajustes abaixo continuam valendo por cima. <span id="auto-cam-info"></span></p>
+      <p class="nota">Para câmera de notebook: acerta a luz pelo seu rosto, e corrige a cor (tira o amarelado ou azulado). Os ajustes abaixo continuam valendo por cima. <span id="auto-cam-info"></span></p>
       <div class="ajuste"><label for="fx-zoom">Zoom no rosto</label><output for="fx-zoom" data-fmt="x"></output>
         <input id="fx-zoom" type="range" min="1" max="3" step="0.05"></div>
       <div class="ajuste"><label for="fx-desfoque">Desfoque do fundo</label><output for="fx-desfoque" data-fmt="px"></output>
@@ -874,6 +914,7 @@
       Aqui fica o jogo
       <small>Este fundo e o painel são só prévia. No modo OBS eles somem.</small>
     </div>
+    <div class="chat-live" id="chat-live" aria-hidden="true"></div>
     <div class="viewers" id="viewers-live" aria-hidden="true"><span class="ponto"></span><span class="num" id="viewers-num">0</span><small>assistindo</small></div>
     <div class="alerta-presente" id="alerta-presente" aria-hidden="true">
       <div class="ap-img" id="ap-img"></div>
@@ -899,7 +940,7 @@
 
     <div class="cam">
       <video id="video" autoplay muted playsinline></video>
-      <canvas id="tela" width="640" height="360"></canvas>
+      <canvas id="tela" width="480" height="270"></canvas>
       <div class="previa" id="cam-msg">sua câmera</div>
       <div class="descanso" aria-live="polite"><small>câmera off</small><span id="descanso-frase"></span></div>
       <svg class="moldura" viewBox="0 0 288 162" aria-hidden="true">
@@ -1078,6 +1119,10 @@
 
   var cx = null, cy = null, alvoX = null, alvoY = null, nQuadro = 0, ultimoTs = 0, ultimoTempo = -1;
   function limitar(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function obsRecebendo() {
+    for (var id in pcs) if (pcs[id] && pcs[id].connectionState === 'connected') return true;
+    return false;
+  }
 
   // ===== Melhoria automática (câmera de notebook) =====
   // A cada 8 quadros mede uma miniatura do rosto: ajusta o brilho para o rosto ficar bem
@@ -1122,7 +1167,7 @@
   function filtroAuto() {
     if (!autoCam) return '';
     var m = Math.max(auto.r, auto.g, auto.b);
-    return ' brightness(' + (auto.luz * m).toFixed(3) + ') blur(0.4px)';
+    return ' brightness(' + (auto.luz * m).toFixed(3) + ')';
   }
   function corAuto() {
     if (!autoCam) return;
@@ -1142,9 +1187,13 @@
     var vw = video.videoWidth, vh = video.videoHeight;
     var ts = performance.now(); if (ts <= ultimoTs) ts = ultimoTs + 1; ultimoTs = ts;
     nQuadro++;
+    // Site com o OBS recebendo a câmera: quem aparece na live é o OBS (ele roda os efeitos).
+    // A prévia do site fica leve: sem IA e só 1 de cada 3 quadros. Poupa muito o Chrome.
+    var leve = !noObs && obsRecebendo();
+    if (leve && nQuadro % 3 !== 0) return;
 
-    // Rosto: procura a cada 4 quadros e o enquadramento vai deslizando até ele
-    if (detector && nQuadro % 4 === 0) {
+    // Rosto: procura a cada 6 quadros e o enquadramento vai deslizando até ele
+    if (!leve && detector && nQuadro % 6 === 0) {
       try {
         var r = detector.detectForVideo(video, ts), d = r.detections && r.detections[0];
         if (d) { var b = d.boundingBox; alvoX = b.originX + b.width / 2; alvoY = b.originY + b.height / 2; }
@@ -1158,11 +1207,11 @@
     var sh = Math.min(vh, vw / ar) / z, sw = sh * ar;
     // rosto um pouco abaixo do meio do quadro: mostra a cabeça inteira e corta o pescoço/peito
     var sx = limitar(cx - sw / 2, 0, vw - sw), sy = limitar(cy - sh * 0.6, 0, vh - sh);
-    if (autoCam && nQuadro % 8 === 0) medirAuto(sx, sy, sw, sh);
+    if (autoCam && !leve && nQuadro % 8 === 0) medirAuto(sx, sy, sw, sh);
     var cor = 'sepia(' + fx.calor + ') saturate(' + fx.cor + ') brightness(' + fx.luz + ') contrast(' + fx.contraste + ')' + filtroAuto();
 
-    // Pessoa recortada a cada 2 quadros (reaproveita a última máscara no meio)
-    if (seg && fx.desfoque > 0 && nQuadro % 2 === 0) {
+    // Pessoa recortada a cada 3 quadros (reaproveita a última máscara no meio)
+    if (!leve && seg && fx.desfoque > 0 && nQuadro % 3 === 0) {
       try {
         var res = seg.segmentForVideo(video, ts), m = res.confidenceMasks && res.confidenceMasks[0];
         if (m) {
@@ -1177,7 +1226,7 @@
       } catch (e) {}
     }
 
-    if (temMascara && fx.desfoque > 0) {
+    if (temMascara && fx.desfoque > 0 && !leve) {
       // fundo: desfocado e um pouco mais escuro
       var bl = fx.desfoque * W / 960, borda = bl * 2;      // mesmo desfoque visual em qualquer tamanho de canvas
       ctx.filter = cor + ' brightness(.82) blur(' + bl + 'px)';
@@ -1226,7 +1275,9 @@
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { aviso('este navegador não libera a webcam'); return; }
     aviso('ligando webcam...');
     try {
-      var pede = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      // 640x360 a 30 fps basta para a câmera pequena (mesmo com zoom no rosto) e pesa
+      // bem menos: menos pixels para codificar, mandar ao OBS e passar pela IA.
+      var pede = { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 30, max: 30 } };
       var achou = webcam !== 'padrao' && (await cameras()).filter(function (d) { return d.label === webcam; })[0];
       if (achou) pede.deviceId = { exact: achou.deviceId };
       var s = await navigator.mediaDevices.getUserMedia({ video: pede, audio: false });
@@ -1268,7 +1319,7 @@
   }
   // Versão do overlay: mude a cada publicação que altera o que aparece no OBS. O site, ao
   // conectar, recarrega (sem cache) as fontes do OBS que usam este endereço se a versão mudou.
-  var VERSAO = '2026-11-17-viewers';
+  var VERSAO = '2026-11-17-simples-chat-leve';
   var notaAtualizar = document.getElementById('obs-atualizar-nota');
   function atualizarOverlaysObs() {
     if (noObs) return Promise.resolve();
@@ -1347,7 +1398,7 @@
       ? { app: 'fa7herTV', de: eu, pedido: extra.pedido }
       : { app: 'fa7herTV', de: eu, jogo: faixa.textContent, cam: campoCam.value, webcam: webcam, fx: fx, escuro: escuro, frase: frase,
           viewers: viewersTotal, viewersPlats: viewersLista, verViewers: verViewers,
-          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes, simples: simples, autoCam: autoCam,
+          top: topOrdenado(), alertas: alertasOn, verTop: verTopOn, musica: musicaAtual, verMusica: verMusica, verRedes: verRedes, simples: simples, chatLive: chatLiveOn, autoCam: autoCam,
           inicio: inicioOn, inicioFim: inicioFim, inicioTotal: inicioTotal };
     pedir('BroadcastCustomEvent', { eventData: dados }).catch(function () {});
   }
@@ -1369,12 +1420,15 @@
     }
     if (e.rtc) { if (e.para === eu) receberRtc(e).catch(function (err) { console.warn('WebRTC', err); }); return; }
     if (e.presente) { if (noObs) mostrarAlerta(e.presente); return; }
+    if (e.chatLive && typeof e.chatLive === 'object') { if (noObs) mostrarChatLive(e.chatLive); return; }
+    if (typeof e.chatLiveApagar === 'string') { if (noObs) apagarChatLive(e.chatLiveApagar); return; }
     if (typeof e.alertas === 'boolean') aplicarAlertas(e.alertas);
     if (typeof e.verTop === 'boolean') aplicarVerTop(e.verTop);
     if (noObs && Array.isArray(e.top)) mostrarTop(e.top);
     if (typeof e.verMusica === 'boolean') aplicarVerMusica(e.verMusica);
     if (typeof e.verRedes === 'boolean') aplicarVerRedes(e.verRedes);
     if (typeof e.simples === 'boolean' && !q.has('simples')) aplicarSimples(e.simples);
+    if (typeof e.chatLive === 'boolean') aplicarChatLive(e.chatLive);
     if (noObs && 'musica' in e) mostrarMusicaLive(e.musica);
     if (e.pedido === 'video') { if (!noObs) oferecer(e.de).catch(function (err) { console.warn('WebRTC', err); }); return; }
     if (e.pedido === 'parar-video') {           // a fonte saiu do ar: para de codificar vídeo para ela
@@ -1701,7 +1755,60 @@
     btnSimples.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
   }
   btnSimples.addEventListener('click', function () { aplicarSimples(!simples); avisar(true); enviar(); });
-  aplicarSimples(q.has('simples') ? q.get('simples') !== '0' : ler('simples') === '1');
+  aplicarSimples(q.has('simples') ? q.get('simples') !== '0' : ler('simples') !== '0');   // simples é o padrão
+
+  // ===== Chat na live (só horizontal, modo simples): o site lê o Casterlabs e repassa ao OBS =====
+  var chatLiveOn = ler('chat-live') !== '0', btnChatLive = document.getElementById('btn-chat-live');
+  var chatLiveBox = document.getElementById('chat-live');
+  function aplicarChatLive(on) {
+    chatLiveOn = !!on; gravar('chat-live', on ? '1' : '0');
+    document.body.classList.toggle('ver-chat-live', chatLiveOn);
+    btnChatLive.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btnChatLive.querySelector('.alternar-estado').textContent = on ? 'ligado' : 'desligado';
+    if (!on) chatLiveBox.textContent = '';
+  }
+  btnChatLive.addEventListener('click', function () { aplicarChatLive(!chatLiveOn); avisar(true); enviar(); });
+  aplicarChatLive(chatLiveOn);
+  // Mensagem curta e segura para mandar ao OBS: só texto e imagens https
+  function resumoChat(ev) {
+    var s = ev.sender || {}, partes = [];
+    (ev.fragments && ev.fragments.length ? ev.fragments : [{ type: 'TEXT', text: ev.raw || '' }]).forEach(function (f) {
+      var img = urlSeg(f.imageLink) || (f.emote && urlSeg(f.emote.image_link || f.emote.imageLink));
+      if ((f.type === 'EMOTE' || f.type === 'EMOJI') && img) partes.push({ img: img });
+      else { var t = f.text != null ? f.text : (f.raw || ''); if (t) partes.push({ t: String(t).slice(0, 300) }); }
+    });
+    var pr = (ev.donations || []).filter(Boolean).map(function (d) {
+      var n = Number(d.count || d.quantity || d.repeat_count) || 1;
+      return d.type === 'TWITCH_BITS' ? '💎 ' + (Number(d.amount) || n) + ' bits' : '🎁 ×' + n + ' ' + nomePresente(d.name || 'presente');
+    }).join(' ');
+    return { id: String(ev.meta_id || ev.id || ''), nome: String(s.displayname || s.username || '?').slice(0, 40),
+      cor: corLegivel(s.color), plat: String(s.platform || ''), partes: partes.slice(0, 40), presente: pr };
+  }
+  function repassarChat(ev) {
+    if (noObs || !chatLiveOn || carregandoHistorico || ev.is_visible === false) return;
+    if (ws && ws.pronto) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, chatLive: resumoChat(ev) } }).catch(function () {});
+  }
+  function apagarChatLive(id) {
+    if (!id) return;
+    if (noObs) { var el = chatLiveBox.querySelector('[data-id="' + String(id).replace(/["\\]/g, '') + '"]'); if (el) el.remove(); return; }
+    if (ws && ws.pronto) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, chatLiveApagar: String(id) } }).catch(function () {});
+  }
+  // No OBS: desenha a mensagem; some depois de 60 s; no máximo 8 na tela
+  function mostrarChatLive(m) {
+    if (!m || !chatLiveOn) return;
+    var d = document.createElement('div'); d.className = 'cl'; if (m.id) d.dataset.id = m.id;
+    var plat = { TWITCH: 'TW', KICK: 'KICK', YOUTUBE: 'YT', TIKTOK: 'TT' }[m.plat];
+    if (plat) { var i = document.createElement('i'); i.className = m.plat; i.textContent = plat; d.appendChild(i); }
+    var b = document.createElement('b'); b.textContent = m.nome || '?'; if (/^(#[0-9a-f]{6}|rgb\([\d, ]+\))$/i.test(m.cor || '')) b.style.color = m.cor; d.appendChild(b);
+    (m.partes || []).forEach(function (p) {
+      if (p && urlSeg(p.img)) { var im = document.createElement('img'); im.src = p.img; im.alt = ''; d.appendChild(im); }
+      else if (p && p.t) d.appendChild(document.createTextNode(p.t));
+    });
+    if (m.presente) { var pr = document.createElement('span'); pr.className = 'pr'; pr.textContent = ' ' + m.presente; d.appendChild(pr); }
+    chatLiveBox.appendChild(d);
+    while (chatLiveBox.children.length > 8) chatLiveBox.removeChild(chatLiveBox.firstChild);
+    setTimeout(function () { d.classList.add('some'); setTimeout(function () { d.remove(); }, 900); }, 60000);
+  }
   aplicarVerRedes(ler('ver-redes') !== '0');
   mostrarMusicaLive(null);
   btnMusicaLive.addEventListener('click', function () { aplicarVerMusica(!verMusica); avisar(true); enviar(); });
@@ -2401,6 +2508,7 @@
     var id = chaveEv(ev);
     if (id && chatVistos[id]) return; if (id) chatVistos[id] = 1;
     if (ev.is_visible === false) return;
+    repassarChat(ev);
     var li = el('li', ev.donations && ev.donations.length ? 'doacao' : '');
     if (id) li.dataset.id = id;
     var s = ev.sender || {}, meta = el('div', 'meta');
@@ -2517,6 +2625,7 @@
         if (ev.is_visible === false) {
           var li = chatLista.querySelector('li[data-id="' + String(ev.meta_id || ev.id).replace(/"/g, '') + '"]');
           if (li) li.remove();
+          apagarChatLive(String(ev.meta_id || ev.id || ''));
         }
         break;
       case 'STREAM_STATUS':
