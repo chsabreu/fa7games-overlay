@@ -159,6 +159,11 @@
     font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; box-shadow: 0 2px 8px rgba(0,0,0,.35);
     animation: cl-entra .3s ease-out; transition: opacity .8s; }
   .chat-live .cl.some { opacity: 0; }
+  /* só na prévia do site: mostra onde o chat vai aparecer enquanto ninguém falou */
+  body:not(.obs).simples.ver-chat-live:not(.vertical) .chat-live:empty::before {
+    content: "o chat da live aparece aqui"; display: block; padding: 8px 12px; border-radius: 8px;
+    border: 1px dashed rgba(255,255,255,.3); color: rgba(255,255,255,.55); font-size: 15px; text-align: center;
+  }
   .chat-live .cl b { font-weight: 700; margin-right: 6px; }
   .chat-live .cl i { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-right: 6px;
     vertical-align: 2px; background: #555; color: #fff; }
@@ -1319,7 +1324,7 @@
   }
   // Versão do overlay: mude a cada publicação que altera o que aparece no OBS. O site, ao
   // conectar, recarrega (sem cache) as fontes do OBS que usam este endereço se a versão mudou.
-  var VERSAO = '2026-11-17-simples-chat-leve';
+  var VERSAO = '2026-11-17-chat-recentes';
   var notaAtualizar = document.getElementById('obs-atualizar-nota');
   function atualizarOverlaysObs() {
     if (noObs) return Promise.resolve();
@@ -1422,6 +1427,7 @@
     if (e.presente) { if (noObs) mostrarAlerta(e.presente); return; }
     if (e.chatLive && typeof e.chatLive === 'object') { if (noObs) mostrarChatLive(e.chatLive); return; }
     if (typeof e.chatLiveApagar === 'string') { if (noObs) apagarChatLive(e.chatLiveApagar); return; }
+    if (Array.isArray(e.chatLiveLote)) { if (noObs) mostrarLoteChat(e.chatLiveLote); return; }
     if (typeof e.alertas === 'boolean') aplicarAlertas(e.alertas);
     if (typeof e.verTop === 'boolean') aplicarVerTop(e.verTop);
     if (noObs && Array.isArray(e.top)) mostrarTop(e.top);
@@ -1435,7 +1441,7 @@
       if (!noObs && pcs[e.de]) { try { pcs[e.de].close(); } catch (x) {} delete pcs[e.de]; }
       return;
     }
-    if (e.pedido === 'estado') { if (!noObs) enviar(); return; }
+    if (e.pedido === 'estado') { if (!noObs) { enviar(); enviarLoteChat(); } return; }
     if (typeof e.jogo === 'string' && document.activeElement !== faixa) {
       faixa.textContent = e.jogo; campoJogo.value = e.jogo; gravar('jogo', e.jogo);
     }
@@ -1784,18 +1790,50 @@
     return { id: String(ev.meta_id || ev.id || ''), nome: String(s.displayname || s.username || '?').slice(0, 40),
       cor: corLegivel(s.color), plat: String(s.platform || ''), partes: partes.slice(0, 40), presente: pr };
   }
+  // O site guarda as mensagens do último minuto: quando a fonte do OBS abre ou recarrega,
+  // ela recebe essas mensagens e o chat não começa vazio.
+  var CHAT_VIDA = 60000, chatRecentes = [];
+  function guardarRecente(m, em) {
+    chatRecentes.push({ m: m, em: em });
+    var limite = Date.now() - CHAT_VIDA;
+    chatRecentes = chatRecentes.filter(function (x) { return x.em > limite; }).slice(-8);
+  }
   function repassarChat(ev) {
-    if (noObs || !chatLiveOn || carregandoHistorico || ev.is_visible === false) return;
-    if (ws && ws.pronto) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, chatLive: resumoChat(ev) } }).catch(function () {});
+    if (noObs || ev.is_visible === false) return;
+    var m = resumoChat(ev);
+    if (carregandoHistorico) {                      // histórico: só guarda o que é do último minuto
+      var em = ev.timestamp ? new Date(ev.timestamp).getTime() : 0;
+      if (em && Date.now() - em < CHAT_VIDA) guardarRecente(m, em);
+      return;
+    }
+    guardarRecente(m, Date.now());
+    if (!chatLiveOn) return;
+    mostrarChatLive(m);                             // prévia do site
+    if (ws && ws.pronto) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, chatLive: m } }).catch(function () {});
+  }
+  function enviarLoteChat() {
+    if (noObs || !chatLiveOn || !ws || !ws.pronto) return;
+    var agora = Date.now();
+    var lote = chatRecentes.filter(function (x) { return agora - x.em < CHAT_VIDA; })
+      .map(function (x) { return Object.assign({}, x.m, { idade: agora - x.em }); });
+    pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, chatLiveLote: lote } }).catch(function () {});
   }
   function apagarChatLive(id) {
     if (!id) return;
-    if (noObs) { var el = chatLiveBox.querySelector('[data-id="' + String(id).replace(/["\\]/g, '') + '"]'); if (el) el.remove(); return; }
+    var el = chatLiveBox.querySelector('[data-id="' + String(id).replace(/["\\]/g, '') + '"]'); if (el) el.remove();
+    if (noObs) return;
+    chatRecentes = chatRecentes.filter(function (x) { return x.m.id !== id; });
     if (ws && ws.pronto) pedir('BroadcastCustomEvent', { eventData: { app: 'fa7herTV', de: eu, chatLiveApagar: String(id) } }).catch(function () {});
   }
-  // No OBS: desenha a mensagem; some depois de 60 s; no máximo 8 na tela
-  function mostrarChatLive(m) {
+  function mostrarLoteChat(lote) {
+    chatLiveBox.textContent = '';
+    (lote || []).slice(-8).forEach(function (m) { mostrarChatLive(m, CHAT_VIDA - (Number(m.idade) || 0)); });
+  }
+  // Desenha a mensagem (no OBS e na prévia do site); some depois de 60 s; no máximo 8 na tela
+  function mostrarChatLive(m, vida) {
     if (!m || !chatLiveOn) return;
+    vida = typeof vida === 'number' ? vida : CHAT_VIDA;
+    if (vida <= 0) return;
     var d = document.createElement('div'); d.className = 'cl'; if (m.id) d.dataset.id = m.id;
     var plat = { TWITCH: 'TW', KICK: 'KICK', YOUTUBE: 'YT', TIKTOK: 'TT' }[m.plat];
     if (plat) { var i = document.createElement('i'); i.className = m.plat; i.textContent = plat; d.appendChild(i); }
@@ -1807,7 +1845,7 @@
     if (m.presente) { var pr = document.createElement('span'); pr.className = 'pr'; pr.textContent = ' ' + m.presente; d.appendChild(pr); }
     chatLiveBox.appendChild(d);
     while (chatLiveBox.children.length > 8) chatLiveBox.removeChild(chatLiveBox.firstChild);
-    setTimeout(function () { d.classList.add('some'); setTimeout(function () { d.remove(); }, 900); }, 60000);
+    setTimeout(function () { d.classList.add('some'); setTimeout(function () { d.remove(); }, 900); }, vida);
   }
   aplicarVerRedes(ler('ver-redes') !== '0');
   mostrarMusicaLive(null);
