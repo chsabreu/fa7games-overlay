@@ -5,10 +5,25 @@
 <meta name="robots" content="noindex">
 <title>fa7herTV overlay (mudou de endereço)</title>
 <script>
-  // O overlay mudou para o DESPONTA. Leva junto ?senha=... e o resto do endereço.
-  location.replace('https://www.desponta.live/overlay/' + location.search + location.hash);
+  // O overlay mudou para o DESPONTA. Leva junto ?senha=... e, se houver configurações salvas
+  // neste endereço (senha do OBS, link do chat, Spotify, ajustes), manda tudo em #migrar=...
+  // para a página nova importar. O que vem depois do # fica só no navegador.
+  (function () {
+    var novo = 'https://www.desponta.live/overlay/' + location.search, hash = location.hash;
+    if (!hash) {
+      try {
+        var dados = {}, n = 0;
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('fa7her-') === 0 && k !== 'fa7her-versao-obs') { dados[k] = localStorage.getItem(k); n++; }
+        }
+        if (n) hash = '#migrar=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(dados)))));
+      } catch (e) {}
+    }
+    location.replace(novo + hash);
+  })();
 </script>
-<meta http-equiv="refresh" content="0; url=https://www.desponta.live/overlay/">
+<noscript><meta http-equiv="refresh" content="0; url=https://www.desponta.live/overlay/"></noscript>
 <style>html,body{background:transparent;margin:0}</style>
 </head>
 <body></body>
